@@ -31,3 +31,4 @@ Desktop.ini
 
 # CodeBuddy 项目数据
 .codebuddy/
+/package-lock.json

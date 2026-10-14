@@ -47,7 +47,7 @@
       <form id="shareForm" class="card form-card">
         <div class="field">
           <span class="field-label">发票文件 <em>*</em></span>
-          <label class="file-picker" for="fileInput">
+          <label class="file-picker" id="filePicker" for="fileInput">
             <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.pdf" hidden />
             <span class="file-text" id="fileText">点击选择发票文件（jpg / png / webp / pdf，不超过 10MB）</span>
           </label>
@@ -168,6 +168,22 @@
       <div class="modal-actions">
         <button type="button" class="ghost-btn" id="claimCancel">取消</button>
         <button type="button" class="primary-btn" id="claimConfirm">确认领取</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 访问令牌弹窗（服务端配置 ACCESS_TOKEN 后启用） -->
+  <div class="modal-mask" id="tokenModal" hidden>
+    <div class="modal">
+      <h3>访问鉴权</h3>
+      <p class="modal-tip">该服务已开启访问保护，请输入访问令牌。令牌将保存在本机浏览器中，下次访问自动携带。</p>
+      <label class="field">
+        <span class="field-label">访问令牌 <em>*</em></span>
+        <input type="password" id="tokenInput" placeholder="请输入访问令牌" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="tokenCancel">取消</button>
+        <button type="button" class="primary-btn" id="tokenConfirm">确认</button>
       </div>
     </div>
   </div>

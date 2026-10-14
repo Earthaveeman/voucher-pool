@@ -42,12 +42,42 @@ function fmtDate(iso) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-async function api(path, options = {}) {
+/* ---------- 访问令牌（服务端配置 ACCESS_TOKEN 后生效） ---------- */
+let token = localStorage.getItem('vpToken') || '';
+let tokenResolve = null;
+
+function askToken() {
+  return new Promise((resolve) => {
+    tokenResolve = resolve;
+    $('#tokenInput').value = token;
+    $('#tokenModal').hidden = false;
+    $('#tokenInput').focus();
+  });
+}
+
+function settleToken(ok) {
+  $('#tokenModal').hidden = true;
+  if (tokenResolve) tokenResolve(ok);
+  tokenResolve = null;
+}
+
+async function api(path, options = {}, retried = false) {
   let res;
   try {
-    res = await fetch(path, options);
+    res = await fetch(path, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
   } catch {
     throw new Error('网络异常，请稍后重试');
+  }
+  if (res.status === 401 && !retried) {
+    const ok = await askToken();
+    if (ok) return api(path, options, true);
+    throw new Error('缺少访问令牌');
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || `请求失败（${res.status}）`);
@@ -315,6 +345,18 @@ $('#claimModal').addEventListener('click', (e) => {
 });
 $('#claimEmail').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#claimConfirm').click();
+});
+
+$('#tokenConfirm').addEventListener('click', () => {
+  const v = $('#tokenInput').value.trim();
+  if (!v) return toast('请输入访问令牌', 'err');
+  token = v;
+  localStorage.setItem('vpToken', token);
+  settleToken(true);
+});
+$('#tokenCancel').addEventListener('click', () => settleToken(false));
+$('#tokenInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#tokenConfirm').click();
 });
 
 $('#queryBtn').addEventListener('click', loadManual);

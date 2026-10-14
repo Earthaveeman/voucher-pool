@@ -9,6 +9,7 @@ const { sendMail } = require('./mailer');
 const router = express.Router();
 
 const INVOICE_TYPES = ['餐饮服务费', '车用汽油', '通信服务费', '其他'];
+const MAX_CLAIM_COUNT = 10;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FILE_TYPES = new Map([
@@ -240,6 +241,9 @@ router.post('/claims', async (req, res, next) => {
     const { ids, email } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0 || !ids.every((n) => Number.isInteger(n) && n > 0)) {
       throw new HttpError(400, '请选择要领取的票据');
+    }
+    if (ids.length > MAX_CLAIM_COUNT) {
+      throw new HttpError(400, `单次最多领取 ${MAX_CLAIM_COUNT} 张票据，请分批领取`);
     }
     if (!EMAIL_RE.test(String(email ?? ''))) throw new HttpError(400, '请填写正确的邮箱地址');
 
