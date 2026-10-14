@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>票据分享池</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button type="button" class="link-btn" id="backHomeBtn" hidden>&larr; 返回首页</button>
+    <span class="brand">票据分享池</span>
+    <span class="step-label" id="stepLabel"></span>
+  </header>
+
+  <main class="container">
+    <!-- 视图 1：首页 -->
+    <section id="view-home" class="view">
+      <div class="hero">
+        <h1>票据分享池</h1>
+        <p class="slogan">把闲置发票分享给需要的人，一键投递到邮箱</p>
+        <div class="big-buttons">
+          <button type="button" class="big-btn share-btn" id="goShareBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0l-4 4m4-4l4 4" />
+              <path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" />
+            </svg>
+            <span class="big-title">我有票据分享</span>
+            <span class="big-sub">上传发票文件，进入公共票据池</span>
+          </button>
+          <button type="button" class="big-btn need-btn" id="goNeedBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="M3 7l9 6 9-6" />
+            </svg>
+            <span class="big-title">我需要票据</span>
+            <span class="big-sub">智能匹配或筛选，发票发送到邮箱</span>
+          </button>
+        </div>
+        <p class="home-stats" id="homeStats">&nbsp;</p>
+      </div>
+    </section>
+
+    <!-- 视图 2：分享页 -->
+    <section id="view-share" class="view" hidden>
+      <h2 class="view-title">分享发票</h2>
+      <form id="shareForm" class="card form-card">
+        <div class="field">
+          <span class="field-label">发票文件 <em>*</em></span>
+          <label class="file-picker" for="fileInput">
+            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.pdf" hidden />
+            <span class="file-text" id="fileText">点击选择发票文件（jpg / png / webp / pdf，不超过 10MB）</span>
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">发票金额 <em>*</em></span>
+            <input type="number" id="shareAmount" min="0.01" step="0.01" placeholder="如 500" required />
+          </label>
+          <label class="field">
+            <span class="field-label">发票类型 <em>*</em></span>
+            <select id="shareType"></select>
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">开票年月 <em>*</em></span>
+            <input type="month" id="shareMonth" required />
+          </label>
+          <label class="field">
+            <span class="field-label">分享人姓名</span>
+            <input type="text" id="shareName" maxlength="50" placeholder="选填" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">联系方式</span>
+          <input type="text" id="shareContact" maxlength="100" placeholder="选填，如微信 / 邮箱 / 手机号" />
+        </label>
+        <label class="field">
+          <span class="field-label">备注</span>
+          <textarea id="shareRemark" maxlength="200" rows="2" placeholder="选填"></textarea>
+        </label>
+        <button type="submit" class="primary-btn" id="shareSubmit">提交分享</button>
+      </form>
+    </section>
+
+    <!-- 视图 3：领取页 -->
+    <section id="view-claim" class="view" hidden>
+      <h2 class="view-title">领取发票</h2>
+      <div class="subtabs">
+        <button type="button" class="subtab active" id="tabRecommend">智能推荐</button>
+        <button type="button" class="subtab" id="tabManual">手动筛选</button>
+      </div>
+
+      <!-- 子标签 A：智能推荐 -->
+      <div id="panelRecommend" class="panel">
+        <div class="card filter-card">
+          <label class="field inline">
+            <span class="field-label">需求金额 <em>*</em></span>
+            <input type="number" id="needAmount" min="0.01" step="0.01" placeholder="如 5000" />
+          </label>
+          <label class="field inline">
+            <span class="field-label">票据类型</span>
+            <select id="needType"></select>
+          </label>
+          <button type="button" class="primary-btn" id="matchBtn">智能匹配</button>
+        </div>
+        <div id="recommendResult" hidden>
+          <p class="notice warn" id="recommendNotice" hidden></p>
+          <div id="recommendList" class="card-list"></div>
+          <div class="card summary-bar" id="recommendSummaryBar">
+            <span id="recommendSummary"></span>
+            <button type="button" class="primary-btn" id="claimRecommendBtn" disabled>领取选中到邮箱</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子标签 B：手动筛选 -->
+      <div id="panelManual" class="panel" hidden>
+        <div class="card filter-card">
+          <label class="field inline">
+            <span class="field-label">金额区间</span>
+            <div class="range">
+              <input type="number" id="filterMin" min="0" step="0.01" placeholder="最小" />
+              <span>—</span>
+              <input type="number" id="filterMax" step="0.01" placeholder="最大" />
+            </div>
+          </label>
+          <label class="field inline">
+            <span class="field-label">类型</span>
+            <select id="filterType"></select>
+          </label>
+          <label class="field inline">
+            <span class="field-label">开票年月</span>
+            <div class="range">
+              <input type="month" id="filterFrom" />
+              <span>—</span>
+              <input type="month" id="filterTo" />
+            </div>
+          </label>
+          <label class="field inline">
+            <span class="field-label">状态</span>
+            <select id="filterStatus">
+              <option value="available">可用</option>
+              <option value="claimed">已领取</option>
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <div class="filter-actions">
+            <button type="button" class="primary-btn" id="queryBtn">查询</button>
+            <button type="button" class="ghost-btn" id="resetBtn">重置</button>
+          </div>
+        </div>
+        <div id="manualList" class="card-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 领取邮箱弹窗 -->
+  <div class="modal-mask" id="claimModal" hidden>
+    <div class="modal">
+      <h3 id="claimModalTitle">领取发票到邮箱</h3>
+      <p class="modal-tip">发票文件将发送至您的邮箱，领取后票据立即锁定，请确认填写正确的邮箱地址。</p>
+      <label class="field">
+        <span class="field-label">邮箱地址 <em>*</em></span>
+        <input type="email" id="claimEmail" placeholder="如 name@example.com" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="claimCancel">取消</button>
+        <button type="button" class="primary-btn" id="claimConfirm">确认领取</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
