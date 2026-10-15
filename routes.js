@@ -65,6 +65,17 @@ function cleanOptional(v, max = 100) {
   return s ? s.slice(0, max) : null;
 }
 
+// multer/busboy 可能把 UTF-8 文件名按 latin1 误解码（如"发票"→"åç¥¨"）；
+// 检测到典型高位字符时按 UTF-8 重解码，并清洗控制字符、限制长度
+function fixOriginalName(name) {
+  let s = String(name ?? '');
+  if (/[\u0080-\u00FF]/.test(s)) {
+    const fixed = Buffer.from(s, 'latin1').toString('utf8');
+    if (!fixed.includes('\uFFFD')) s = fixed;
+  }
+  return s.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 200) || 'invoice';
+}
+
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -129,7 +140,7 @@ router.post('/invoices', upload.single('file'), (req, res, next) => {
       cleanOptional(req.body.uploader_contact),
       cleanOptional(req.body.remark, 200),
       req.file.filename,
-      req.file.originalname,
+      fixOriginalName(req.file.originalname),
       new Date().toISOString()
     );
 
@@ -140,6 +151,11 @@ router.post('/invoices', upload.single('file'), (req, res, next) => {
     if (req.file) fs.unlink(req.file.path, () => {});
     next(err);
   }
+});
+
+// ---------- 元信息：类型清单等由服务端统一下发，避免前后端双份维护 ----------
+router.get('/meta', (_req, res) => {
+  res.json({ invoice_types: INVOICE_TYPES, max_claim_count: MAX_CLAIM_COUNT });
 });
 
 // ---------- 2. 检索 ----------
@@ -156,17 +172,15 @@ router.get('/invoices', (req, res, next) => {
     }
     if (q.min_amount != null && q.min_amount !== '') {
       const v = Number(q.min_amount);
-      if (Number.isFinite(v)) {
-        where.push('amount >= ?');
-        params.push(v);
-      }
+      if (!Number.isFinite(v)) throw new HttpError(400, '最小金额格式不正确');
+      where.push('amount >= ?');
+      params.push(v);
     }
     if (q.max_amount != null && q.max_amount !== '') {
       const v = Number(q.max_amount);
-      if (Number.isFinite(v)) {
-        where.push('amount <= ?');
-        params.push(v);
-      }
+      if (!Number.isFinite(v)) throw new HttpError(400, '最大金额格式不正确');
+      where.push('amount <= ?');
+      params.push(v);
     }
     if (q.invoice_type) {
       if (!INVOICE_TYPES.includes(q.invoice_type)) throw new HttpError(400, '发票类型不合法');
@@ -184,9 +198,16 @@ router.get('/invoices', (req, res, next) => {
       params.push(q.month_to);
     }
 
-    const sql = `SELECT * FROM invoices ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY created_at DESC`;
-    const items = db.prepare(sql).all(...params).map(toPublic);
-    res.json({ items, total: items.length });
+    // 分页：默认第 1 页、每页 100 条，单页上限 200
+    const page = Math.max(1, Number(q.page) || 1);
+    const pageSize = Math.min(200, Math.max(1, Number(q.page_size) || 100));
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const total = db.prepare(`SELECT COUNT(*) AS c FROM invoices ${whereSql}`).get(...params).c;
+    const items = db
+      .prepare(`SELECT * FROM invoices ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, pageSize, (page - 1) * pageSize)
+      .map(toPublic);
+    res.json({ items, total, page, page_size: pageSize, has_more: page * pageSize < total });
   } catch (err) {
     next(err);
   }
@@ -204,32 +225,38 @@ router.get('/invoices/recommend', (req, res, next) => {
       ? db.prepare(`SELECT * FROM invoices WHERE status='available' AND invoice_type = ?`).all(type)
       : db.prepare(`SELECT * FROM invoices WHERE status='available'`).all();
 
+    // 金额统一换算为"分"（整数）参与比较，规避二进制浮点误差（如 0.1 + 0.2 !== 0.3）
+    const cents = (x) => Math.round(x * 100);
+    for (const it of pool) it.cents = cents(it.amount);
+
     // 开票年月 ASC，同年月金额 ASC：优先日期较早
     const sorted = pool.sort(byDateAsc);
     // 金额 ASC，金额相同取日期较早：用于"收尾取超额最小"
-    const byAmount = [...pool].sort((a, b) => a.amount - b.amount || byDateAsc(a, b));
+    const byAmount = [...pool].sort((a, b) => a.cents - b.cents || byDateAsc(a, b));
 
+    const targetCents = cents(target);
     const selectedIds = new Set();
     const selected = [];
-    let sum = 0;
-    while (sum < target && selectedIds.size < sorted.length) {
-      const gap = target - sum;
+    let sumCents = 0;
+    while (sumCents < targetCents && selectedIds.size < sorted.length) {
+      const gap = targetCents - sumCents;
       const oldest = sorted.find((i) => !selectedIds.has(i.id));
       let pick;
-      if (oldest.amount <= gap) {
+      if (oldest.cents <= gap) {
         // 纳入后不超额：严格按较早日期优先
         pick = oldest;
       } else {
         // 收尾：取"金额≥缺口"的最小者（金额相同取日期较早）
-        pick = byAmount.find((i) => !selectedIds.has(i.id) && i.amount >= gap) || oldest;
+        pick = byAmount.find((i) => !selectedIds.has(i.id) && i.cents >= gap) || oldest;
       }
       selectedIds.add(pick.id);
       selected.push(pick);
-      sum = Math.round((sum + pick.amount) * 100) / 100;
+      sumCents += pick.cents;
     }
 
     selected.sort(byDateAsc);
-    res.json({ items: selected.map(toPublic), total: sum, target, sufficient: sum >= target });
+    const sum = sumCents / 100;
+    res.json({ items: selected.map(toPublic), total: sum, target, sufficient: sumCents >= targetCents });
   } catch (err) {
     next(err);
   }

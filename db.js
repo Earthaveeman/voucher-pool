@@ -31,12 +31,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_status ON invoices(status);
   CREATE INDEX IF NOT EXISTS idx_type   ON invoices(invoice_type);
   CREATE INDEX IF NOT EXISTS idx_month  ON invoices(invoice_month);
+  CREATE INDEX IF NOT EXISTS idx_created ON invoices(created_at DESC);
 `);
 
 // 简易事务包装：异常时自动回滚（node:sqlite 无内置 transaction 助手）
 function transaction(fn) {
   return (...args) => {
-    db.exec('BEGIN');
+    if (db.isTransaction) throw new Error('不允许嵌套事务');
+    // IMMEDIATE 在事务开始即取写锁，避免 DEFERRED 模式下锁升级失败
+    db.exec('BEGIN IMMEDIATE');
     try {
       const result = fn(...args);
       db.exec('COMMIT');
@@ -44,8 +47,9 @@ function transaction(fn) {
     } catch (err) {
       try {
         db.exec('ROLLBACK');
-      } catch {
-        // 忽略回滚异常，抛出原始错误
+      } catch (rollbackErr) {
+        // 回滚也失败时连接将停留在事务态，后续所有事务都会失败；显式记录便于排查级联故障
+        console.error('[db] 事务回滚失败，连接可能处于悬挂事务状态:', rollbackErr);
       }
       throw err;
     }

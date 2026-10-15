@@ -39,6 +39,10 @@ async function createRealTransporter() {
     secure: String(process.env.SMTP_SECURE ?? 'true') !== 'false',
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     tls,
+    // SMTP 无响应时快速失败，避免票据长时间锁定、HTTP 请求挂起
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
 }
 
@@ -55,7 +59,11 @@ async function sendMail({ to, subject, html, attachments = [] }) {
   if (isReal) {
     // 每次发信前重建 transporter：跟随 DNS 变化重新解析，避免缓存过期 IP
     const transporter = await createRealTransporter();
-    await transporter.sendMail(mail);
+    try {
+      await transporter.sendMail(mail);
+    } finally {
+      transporter.close(); // 显式释放底层连接，防止 socket 泄漏
+    }
     return { mode: 'smtp' };
   }
   const info = await mockTransporter.sendMail(mail);

@@ -3,7 +3,9 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-const TYPES = ['餐饮服务费', '车用汽油', '通信服务费', '其他'];
+// 兜底清单：启动后优先从 /api/meta 拉取服务端配置，失败时沿用
+let TYPES = ['餐饮服务费', '车用汽油', '通信服务费', '其他'];
+let MAX_CLAIM = 10;
 
 /* ---------- 初始化下拉框 ---------- */
 function fillSelect(sel, allLabel) {
@@ -21,9 +23,29 @@ function fillSelect(sel, allLabel) {
     el.appendChild(opt);
   }
 }
-fillSelect('#shareType');
-fillSelect('#needType', '全部类型');
-fillSelect('#filterType', '全部类型');
+
+function fillSelects() {
+  for (const sel of ['#shareType', '#needType', '#filterType']) $(sel).innerHTML = '';
+  fillSelect('#shareType');
+  fillSelect('#needType', '全部类型');
+  fillSelect('#filterType', '全部类型');
+}
+fillSelects(); // 先渲染兜底清单，initMeta 成功后以服务端清单刷新
+
+async function initMeta() {
+  try {
+    const meta = await api('/api/meta');
+    if (Array.isArray(meta.invoice_types) && meta.invoice_types.length) {
+      TYPES = meta.invoice_types;
+      fillSelects();
+    }
+    if (Number.isInteger(meta.max_claim_count) && meta.max_claim_count > 0) {
+      MAX_CLAIM = meta.max_claim_count;
+    }
+  } catch {
+    // 拉取失败时沿用兜底清单
+  }
+}
 
 /* ---------- 通用工具 ---------- */
 function esc(s) {
@@ -231,6 +253,11 @@ function renderRecommend(data) {
 
 function updateRecommendSummary() {
   const checked = recItems.filter((i) => i.checked);
+  if (checked.length > MAX_CLAIM) {
+    $('#recommendSummary').textContent = `单次最多领取 ${MAX_CLAIM} 张，当前已选 ${checked.length} 张，请取消部分勾选`;
+    $('#claimRecommendBtn').disabled = true;
+    return;
+  }
   const total = checked.reduce((s, i) => s + i.amount, 0);
   const target = lastRecommend ? lastRecommend.amount : 0;
   const diff = Math.round((total - target) * 100) / 100;
@@ -260,6 +287,7 @@ async function loadManual() {
     manualLoaded = true;
     $('#manualList').innerHTML = data.items.length
       ? data.items.map((it) => cardHtml(it)).join('')
+        + (data.has_more ? `<p class="empty">当前筛选共 ${data.total} 条，仅显示前 ${data.items.length} 条，请缩小筛选范围</p>` : '')
       : '<p class="empty">暂无符合条件的票据</p>';
     $$('#manualList [data-claim]').forEach((b) =>
       b.addEventListener('click', () => openClaimModal([Number(b.dataset.claim)]))
@@ -334,6 +362,16 @@ $('#tabRecommend').addEventListener('click', () => switchTab('recommend'));
 $('#tabManual').addEventListener('click', () => switchTab('manual'));
 
 $('#matchBtn').addEventListener('click', runRecommend);
+
+// 需求条件变化后使已有推荐结果失效，避免按旧条件误领取
+function invalidateRecommend() {
+  if (!lastRecommend) return;
+  lastRecommend = null;
+  recItems = [];
+  $('#recommendResult').hidden = true;
+}
+$('#needAmount').addEventListener('input', invalidateRecommend);
+$('#needType').addEventListener('change', invalidateRecommend);
 $('#claimRecommendBtn').addEventListener('click', () => {
   const ids = recItems.filter((i) => i.checked).map((i) => i.id);
   if (ids.length) openClaimModal(ids);
@@ -368,4 +406,5 @@ $('#resetBtn').addEventListener('click', () => {
 });
 
 /* ---------- 启动 ---------- */
+initMeta();
 showView('home');

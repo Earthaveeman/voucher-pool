@@ -5,14 +5,19 @@ const express = require('express');
 
 const envPath = path.join(__dirname, '.env');
 if (fs.existsSync(envPath)) {
-  try {
-    process.loadEnvFile(envPath);
-  } catch {
-    // .env 格式异常时忽略，使用默认配置
+  if (typeof process.loadEnvFile === 'function') {
+    try {
+      process.loadEnvFile(envPath);
+    } catch {
+      // .env 格式异常时忽略，使用默认配置
+    }
+  } else {
+    console.warn('[env] 当前 Node 版本不支持 process.loadEnvFile（需 ≥20.12），.env 未加载');
   }
 }
 
 const routes = require('./routes');
+const { db } = require('./db');
 const { logMode } = require('./mailer');
 
 const app = express();
@@ -76,6 +81,14 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ message: '接口不存在' });
 });
 
+// 兜底 404：浏览器页面请求重定向回首页，其余请求返回 JSON
+app.use((req, res) => {
+  if (req.method === 'GET' && String(req.headers.accept || '').includes('text/html')) {
+    return res.redirect('/');
+  }
+  res.status(404).json({ message: '资源不存在' });
+});
+
 // 统一错误处理
 app.use((err, _req, res, _next) => {
   if (err.name === 'MulterError') {
@@ -93,7 +106,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`票据分享池已启动: http://localhost:${PORT}`);
   logMode();
   console.log(
@@ -102,3 +115,19 @@ app.listen(PORT, () => {
       : '[auth] 警告：未配置 ACCESS_TOKEN，API 无鉴权（仅供本地测试，外网部署务必配置）'
   );
 });
+
+// 优雅停机：等待存量请求结束后关闭数据库连接再退出
+function shutdown(signal) {
+  console.log(`\n[server] 收到 ${signal}，正在停机…`);
+  server.close(() => {
+    try {
+      db.close();
+    } catch {
+      // 连接已关闭或存在未释放语句时忽略
+    }
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 5000).unref(); // 兜底：5 秒后强制退出
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
