@@ -182,10 +182,16 @@ router.get('/invoices', (req, res, next) => {
       where.push('amount <= ?');
       params.push(v);
     }
-    if (q.invoice_type) {
-      if (!INVOICE_TYPES.includes(q.invoice_type)) throw new HttpError(400, '这个票据类型小系统不认识呀');
-      where.push('invoice_type = ?');
-      params.push(q.invoice_type);
+    if (q.invoice_type != null) {
+      // 支持多选：同名参数重复出现时（express 默认解析）按 IN 查询
+      const types = (Array.isArray(q.invoice_type) ? q.invoice_type : [q.invoice_type]).filter(Boolean);
+      for (const t of types) {
+        if (!INVOICE_TYPES.includes(t)) throw new HttpError(400, '这个票据类型小系统不认识呀');
+      }
+      if (types.length) {
+        where.push(`invoice_type IN (${types.map(() => '?').join(',')})`);
+        params.push(...types);
+      }
     }
     if (q.month_from) {
       if (!MONTH_RE.test(q.month_from)) throw new HttpError(400, '起始年月要写成 YYYY-MM 哦');
@@ -203,8 +209,9 @@ router.get('/invoices', (req, res, next) => {
     const pageSize = Math.min(200, Math.max(1, Number(q.page_size) || 100));
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const total = db.prepare(`SELECT COUNT(*) AS c FROM invoices ${whereSql}`).get(...params).c;
+    // 固定按开票年月升序（同年月按入库先后），不提供其他排序方式
     const items = db
-      .prepare(`SELECT * FROM invoices ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM invoices ${whereSql} ORDER BY invoice_month ASC, id ASC LIMIT ? OFFSET ?`)
       .all(...params, pageSize, (page - 1) * pageSize)
       .map(toPublic);
     res.json({ items, total, page, page_size: pageSize, has_more: page * pageSize < total });

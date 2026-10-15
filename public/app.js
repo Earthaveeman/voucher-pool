@@ -28,7 +28,7 @@ function fillSelects() {
   for (const sel of ['#shareType', '#needType', '#filterType']) $(sel).innerHTML = '';
   fillSelect('#shareType');
   fillSelect('#needType', '全都想要');
-  fillSelect('#filterType', '全都想要');
+  fillSelect('#filterType'); // 多选框，默认不选即查询全部
 }
 fillSelects(); // 先渲染兜底清单，initMeta 成功后以服务端清单刷新
 
@@ -159,6 +159,18 @@ async function loadStats() {
 /* ---------- 分享表单 ---------- */
 let pickedFile = null;
 const FILE_PLACEHOLDER = '点一下挑票据文件呀，拖进来也行（jpg / png / webp / pdf，10MB 以内哦）';
+const MIN_MONTH = '2026-01'; // 开票年月不能早于 2026 年
+
+// 开票年月：默认当年当月，且不早于 2026-01
+function resetShareMonth() {
+  const now = new Date();
+  const p = (x) => String(x).padStart(2, '0');
+  const cur = `${now.getFullYear()}-${p(now.getMonth() + 1)}`;
+  const el = $('#shareMonth');
+  el.min = MIN_MONTH;
+  el.value = cur < MIN_MONTH ? MIN_MONTH : cur;
+}
+resetShareMonth();
 
 function setPickedFile(file) {
   pickedFile = file || null;
@@ -205,12 +217,12 @@ $('#shareForm').addEventListener('submit', async (e) => {
     fd.append('invoice_type', $('#shareType').value);
     fd.append('invoice_month', $('#shareMonth').value);
     fd.append('uploader_name', $('#shareName').value);
-    fd.append('uploader_contact', $('#shareContact').value);
     fd.append('remark', $('#shareRemark').value);
     const inv = await api('/api/invoices', { method: 'POST', body: fd });
     toast(`分享成功～票据 #${inv.id} 已经跳进池子里咯`);
     e.target.reset();
     setPickedFile(null);
+    resetShareMonth();
     loadStats();
   } catch (err) {
     toast(err.message, 'err');
@@ -333,7 +345,10 @@ async function loadManual() {
   const max = $('#filterMax').value;
   if (min) qs.set('min_amount', min);
   if (max) qs.set('max_amount', max);
-  if ($('#filterType').value) qs.set('invoice_type', $('#filterType').value);
+  // 票据类型为多选，选中的类型以重复参数传给后端；一个都不选即查询全部
+  for (const opt of $('#filterType').selectedOptions) {
+    if (opt.value) qs.append('invoice_type', opt.value);
+  }
   if ($('#filterFrom').value) qs.set('month_from', $('#filterFrom').value);
   if ($('#filterTo').value) qs.set('month_to', $('#filterTo').value);
   qs.set('status', $('#filterStatus').value || 'available');
@@ -469,7 +484,7 @@ document.addEventListener('keydown', (e) => {
 $('#queryBtn').addEventListener('click', loadManual);
 $('#resetBtn').addEventListener('click', () => {
   ['filterMin', 'filterMax', 'filterFrom', 'filterTo'].forEach((id) => { $('#' + id).value = ''; });
-  $('#filterType').value = '';
+  $$('#filterType option').forEach((o) => { o.selected = false; });
   $('#filterStatus').value = 'available';
   loadManual();
 });

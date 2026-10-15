@@ -243,11 +243,18 @@ body {
 }
 .field-row { display: flex; gap: 16px; }
 
+/* 票据类型多选框 */
+.field select[multiple] { min-height: 96px; padding: 8px 10px; }
+.field select[multiple] option { padding: 4px 8px; border-radius: 8px; }
+
 .file-picker {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 2.5px dashed #e8c8dc;
   border-radius: 16px;
-  padding: 22px;
+  min-height: 150px;
+  padding: 40px 22px;
   text-align: center;
   color: var(--muted);
   cursor: pointer;

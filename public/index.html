@@ -75,10 +75,6 @@
           </label>
         </div>
         <label class="field">
-          <span class="field-label">联系方式</span>
-          <input type="text" id="shareContact" maxlength="100" placeholder="不留也行，比如微信 / 邮箱 / 手机号" />
-        </label>
-        <label class="field">
           <span class="field-label">悄悄话备注</span>
           <textarea id="shareRemark" maxlength="200" rows="2" placeholder="想说什么悄悄话嘛"></textarea>
         </label>
@@ -90,35 +86,12 @@
     <section id="view-claim" class="view" hidden>
       <h2 class="view-title">来领票据啦~</h2>
       <div class="subtabs" role="tablist" aria-label="领取方式">
-        <button type="button" class="subtab active" id="tabRecommend" role="tab" aria-selected="true" aria-controls="panelRecommend">智能推荐</button>
-        <button type="button" class="subtab" id="tabManual" role="tab" aria-selected="false" aria-controls="panelManual">慢慢挑</button>
+        <button type="button" class="subtab active" id="tabManual" role="tab" aria-selected="true" aria-controls="panelManual">慢慢挑</button>
+        <button type="button" class="subtab" id="tabRecommend" role="tab" aria-selected="false" aria-controls="panelRecommend">智能匹配</button>
       </div>
 
-      <!-- 子标签 A：智能推荐 -->
-      <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend">
-        <div class="card filter-card">
-          <label class="field inline">
-            <span class="field-label">想要的金额 <em>*</em></span>
-            <input type="number" id="needAmount" min="0.01" step="0.01" placeholder="比如 5000" />
-          </label>
-          <label class="field inline">
-            <span class="field-label">票据类型</span>
-            <select id="needType"></select>
-          </label>
-          <button type="button" class="primary-btn" id="matchBtn">帮我去匹配</button>
-        </div>
-        <div id="recommendResult" hidden>
-          <p class="notice warn" id="recommendNotice" hidden></p>
-          <div id="recommendList" class="card-list"></div>
-          <div class="card summary-bar" id="recommendSummaryBar">
-            <span id="recommendSummary"></span>
-            <button type="button" class="primary-btn" id="claimRecommendBtn" disabled>选中的寄给我</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 子标签 B：手动筛选 -->
-      <div id="panelManual" class="panel" role="tabpanel" aria-labelledby="tabManual" hidden>
+      <!-- 子标签 A：手动筛选 -->
+      <div id="panelManual" class="panel" role="tabpanel" aria-labelledby="tabManual">
         <div class="card filter-card">
           <label class="field inline">
             <span class="field-label">金额范围</span>
@@ -129,8 +102,8 @@
             </span>
           </label>
           <label class="field inline">
-            <span class="field-label">票据类型</span>
-            <select id="filterType"></select>
+            <span class="field-label">票据类型（可多选）</span>
+            <select id="filterType" multiple size="4"></select>
           </label>
           <label class="field inline">
             <span class="field-label">开票年月</span>
@@ -154,6 +127,29 @@
           </div>
         </div>
         <div id="manualList" class="card-list"></div>
+      </div>
+
+      <!-- 子标签 B：智能推荐 -->
+      <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend" hidden>
+        <div class="card filter-card">
+          <label class="field inline">
+            <span class="field-label">想要的金额 <em>*</em></span>
+            <input type="number" id="needAmount" min="0.01" step="0.01" placeholder="比如 5000" />
+          </label>
+          <label class="field inline">
+            <span class="field-label">票据类型</span>
+            <select id="needType"></select>
+          </label>
+          <button type="button" class="primary-btn" id="matchBtn">帮我去匹配</button>
+        </div>
+        <div id="recommendResult" hidden>
+          <p class="notice warn" id="recommendNotice" hidden></p>
+          <div id="recommendList" class="card-list"></div>
+          <div class="card summary-bar" id="recommendSummaryBar">
+            <span id="recommendSummary"></span>
+            <button type="button" class="primary-btn" id="claimRecommendBtn" disabled>选中的寄给我</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>
