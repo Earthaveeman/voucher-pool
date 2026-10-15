@@ -1,7 +1,7 @@
 {
   "name": "voucher-pool",
   "version": "1.0.0",
-  "description": "票据分享池：发票共享流转工具（分享上传 / 智能推荐 / 邮件投递领取）",
+  "description": "票据分享池：票据共享流转小工具（分享上传 / 智能推荐 / 邮件投递领取）",
   "private": true,
   "engines": { "node": ">=22.13.0" },
   "main": "server.js",

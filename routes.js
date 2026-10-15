@@ -8,7 +8,7 @@ const { sendMail } = require('./mailer');
 
 const router = express.Router();
 
-const INVOICE_TYPES = ['餐饮服务费', '车用汽油', '通信服务费', '其他'];
+const INVOICE_TYPES = ['餐饮', '汽油', '通信', '其他'];
 const MAX_CLAIM_COUNT = 10;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,7 +40,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (FILE_TYPES.has(file.mimetype)) return cb(null, true);
-    const err = new Error('发票文件仅支持 jpg/png/webp/pdf 格式');
+    const err = new Error('票据文件只认 jpg/png/webp/pdf 这几种格式哦');
     err.status = 400;
     cb(err);
   },
@@ -65,7 +65,7 @@ function cleanOptional(v, max = 100) {
   return s ? s.slice(0, max) : null;
 }
 
-// multer/busboy 可能把 UTF-8 文件名按 latin1 误解码（如"发票"→"åç¥¨"）；
+// multer/busboy 可能把 UTF-8 文件名按 latin1 误解码（如中文变乱码）；
 // 检测到典型高位字符时按 UTF-8 重解码，并清洗控制字符、限制长度
 function fixOriginalName(name) {
   let s = String(name ?? '');
@@ -99,8 +99,8 @@ function buildClaimEmailHtml(rows, total) {
     </tr>`).join('');
   return `
     <div style="font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif; max-width: 640px;">
-      <h3>您领取的 ${rows.length} 张发票文件</h3>
-      <p>附件共 ${rows.length} 个文件，票据明细如下：</p>
+      <h3>您抱走的 ${rows.length} 张票据到啦～</h3>
+      <p>附件共 ${rows.length} 个文件都打包好了，票据明细如下：</p>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; font-size: 14px;">
         <tr style="background:#f5f5f5;">
           <th>序号</th><th>金额</th><th>类型</th><th>开票年月</th><th>备注</th><th>分享人</th><th>联系方式</th>
@@ -110,7 +110,7 @@ function buildClaimEmailHtml(rows, total) {
           <td>合计</td><td>${money(total)}</td><td colspan="5"></td>
         </tr>
       </table>
-      <p style="color:#888;font-size:12px;">本邮件由票据分享池系统自动发送</p>
+      <p style="color:#888;font-size:12px;">这封邮件是票据分享池偷偷派来的小信使哦～</p>
     </div>`;
 }
 
@@ -124,10 +124,10 @@ router.post('/invoices', upload.single('file'), (req, res, next) => {
   try {
     const { amount, invoice_type, invoice_month } = req.body;
     const amt = Number(amount);
-    if (!Number.isFinite(amt) || amt <= 0) throw new HttpError(400, '请填写正确的发票金额');
-    if (!INVOICE_TYPES.includes(invoice_type)) throw new HttpError(400, '请选择发票类型');
-    if (!MONTH_RE.test(String(invoice_month || ''))) throw new HttpError(400, '开票年月格式应为 YYYY-MM（如 2026-05）');
-    if (!req.file) throw new HttpError(400, '请上传发票文件（jpg/png/webp/pdf，不超过 10MB）');
+    if (!Number.isFinite(amt) || amt <= 0) throw new HttpError(400, '票据金额要填对哦，大于 0 才行');
+    if (!INVOICE_TYPES.includes(invoice_type)) throw new HttpError(400, '票据类型还没选呢');
+    if (!MONTH_RE.test(String(invoice_month || ''))) throw new HttpError(400, '开票年月要写成 YYYY-MM 哦（比如 2026-05）');
+    if (!req.file) throw new HttpError(400, '票据文件还没传哦（jpg/png/webp/pdf，10MB 以内）');
 
     const info = db.prepare(`
       INSERT INTO invoices (amount, invoice_type, invoice_month, uploader_name, uploader_contact, remark, file_path, file_name, status, created_at)
@@ -172,28 +172,28 @@ router.get('/invoices', (req, res, next) => {
     }
     if (q.min_amount != null && q.min_amount !== '') {
       const v = Number(q.min_amount);
-      if (!Number.isFinite(v)) throw new HttpError(400, '最小金额格式不正确');
+      if (!Number.isFinite(v)) throw new HttpError(400, '最小金额好像不太对哦');
       where.push('amount >= ?');
       params.push(v);
     }
     if (q.max_amount != null && q.max_amount !== '') {
       const v = Number(q.max_amount);
-      if (!Number.isFinite(v)) throw new HttpError(400, '最大金额格式不正确');
+      if (!Number.isFinite(v)) throw new HttpError(400, '最大金额好像不太对哦');
       where.push('amount <= ?');
       params.push(v);
     }
     if (q.invoice_type) {
-      if (!INVOICE_TYPES.includes(q.invoice_type)) throw new HttpError(400, '发票类型不合法');
+      if (!INVOICE_TYPES.includes(q.invoice_type)) throw new HttpError(400, '这个票据类型小系统不认识呀');
       where.push('invoice_type = ?');
       params.push(q.invoice_type);
     }
     if (q.month_from) {
-      if (!MONTH_RE.test(q.month_from)) throw new HttpError(400, '起始年月格式应为 YYYY-MM');
+      if (!MONTH_RE.test(q.month_from)) throw new HttpError(400, '起始年月要写成 YYYY-MM 哦');
       where.push('invoice_month >= ?');
       params.push(q.month_from);
     }
     if (q.month_to) {
-      if (!MONTH_RE.test(q.month_to)) throw new HttpError(400, '结束年月格式应为 YYYY-MM');
+      if (!MONTH_RE.test(q.month_to)) throw new HttpError(400, '结束年月要写成 YYYY-MM 哦');
       where.push('invoice_month <= ?');
       params.push(q.month_to);
     }
@@ -217,9 +217,9 @@ router.get('/invoices', (req, res, next) => {
 router.get('/invoices/recommend', (req, res, next) => {
   try {
     const target = Number(req.query.amount);
-    if (!Number.isFinite(target) || target <= 0) throw new HttpError(400, '请填写正确的需求金额');
+    if (!Number.isFinite(target) || target <= 0) throw new HttpError(400, '想要的金额要填对哦，大于 0 才行');
     const type = req.query.invoice_type;
-    if (type && !INVOICE_TYPES.includes(type)) throw new HttpError(400, '发票类型不合法');
+    if (type && !INVOICE_TYPES.includes(type)) throw new HttpError(400, '这个票据类型小系统不认识呀');
 
     const pool = type
       ? db.prepare(`SELECT * FROM invoices WHERE status='available' AND invoice_type = ?`).all(type)
@@ -265,24 +265,24 @@ router.post('/claims', async (req, res, next) => {
   try {
     const { ids, email } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0 || !ids.every((n) => Number.isInteger(n) && n > 0)) {
-      throw new HttpError(400, '请选择要领取的票据');
+      throw new HttpError(400, '先挑一挑要领取的票据嘛');
     }
     if (ids.length > MAX_CLAIM_COUNT) {
-      throw new HttpError(400, `单次最多领取 ${MAX_CLAIM_COUNT} 张票据，请分批领取`);
+      throw new HttpError(400, `一次最多抱 ${MAX_CLAIM_COUNT} 张哦，分几批来嘛`);
     }
-    if (!EMAIL_RE.test(String(email ?? ''))) throw new HttpError(400, '请填写正确的邮箱地址');
+    if (!EMAIL_RE.test(String(email ?? ''))) throw new HttpError(400, '邮箱地址好像写错了哦');
 
     const uniqueIds = [...new Set(ids)];
     const now = new Date().toISOString();
 
-    // 单事务 all-or-nothing：任一票据已被领取则整批回滚
+    // 单事务 all-or-nothing：任一票据已被抱走则整批回滚
     const claimOne = db.prepare(
       `UPDATE invoices SET status='claimed', claimant_email=?, claimed_at=? WHERE id=? AND status='available'`
     );
     const claimTx = transaction((idList) => {
       for (const id of idList) {
         if (claimOne.run(email, now, id).changes === 0) {
-          throw new HttpError(409, '所选票据中含已被领取的票据，请刷新后重试');
+          throw new HttpError(409, '哎呀，有的票据已经被抱走啦，刷新一下再试试吧');
         }
       }
     });
@@ -296,7 +296,7 @@ router.post('/claims', async (req, res, next) => {
     try {
       await sendMail({
         to: email,
-        subject: `【票据分享池】您领取的 ${rows.length} 张发票文件`,
+        subject: `【票据分享池】您抱走的 ${rows.length} 张票据来啦～`,
         html,
         attachments,
       });
@@ -307,10 +307,10 @@ router.post('/claims', async (req, res, next) => {
          WHERE id IN (${uniqueIds.map(() => '?').join(',')}) AND status='claimed'`
       );
       rollback.run(...uniqueIds);
-      throw new HttpError(500, '邮件发送失败，请稍后重试');
+      throw new HttpError(500, '邮件飞不过去，稍后再试试哦');
     }
 
-    res.json({ count: rows.length, message: `已将 ${rows.length} 张发票文件发送至 ${email}，请注意查收` });
+    res.json({ count: rows.length, message: `${rows.length} 张票据已经飞向 ${email} 啦，记得查收哦` });
   } catch (err) {
     next(err);
   }

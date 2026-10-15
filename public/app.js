@@ -4,7 +4,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 // 兜底清单：启动后优先从 /api/meta 拉取服务端配置，失败时沿用
-let TYPES = ['餐饮服务费', '车用汽油', '通信服务费', '其他'];
+let TYPES = ['餐饮', '汽油', '通信', '其他'];
 let MAX_CLAIM = 10;
 
 /* ---------- 初始化下拉框 ---------- */
@@ -27,8 +27,8 @@ function fillSelect(sel, allLabel) {
 function fillSelects() {
   for (const sel of ['#shareType', '#needType', '#filterType']) $(sel).innerHTML = '';
   fillSelect('#shareType');
-  fillSelect('#needType', '全部类型');
-  fillSelect('#filterType', '全部类型');
+  fillSelect('#needType', '全都想要');
+  fillSelect('#filterType', '全都想要');
 }
 fillSelects(); // 先渲染兜底清单，initMeta 成功后以服务端清单刷新
 
@@ -64,7 +64,7 @@ function fmtDate(iso) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/* ---------- 访问令牌（服务端配置 ACCESS_TOKEN 后生效） ---------- */
+/* ---------- 访问小暗号（服务端配置 ACCESS_TOKEN 后生效） ---------- */
 let token = localStorage.getItem('vpToken') || '';
 let tokenResolve = null;
 
@@ -94,15 +94,15 @@ async function api(path, options = {}, retried = false) {
       },
     });
   } catch {
-    throw new Error('网络异常，请稍后重试');
+    throw new Error('网络小调皮，稍后再试试哦');
   }
   if (res.status === 401 && !retried) {
     const ok = await askToken();
     if (ok) return api(path, options, true);
-    throw new Error('缺少访问令牌');
+    throw new Error('小暗号还没给呢');
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `请求失败（${res.status}）`);
+  if (!res.ok) throw new Error(data.message || `哎呀，请求失败啦（${res.status}）`);
   return data;
 }
 
@@ -117,7 +117,7 @@ function toast(msg, type = 'ok') {
 }
 
 /* ---------- 视图切换 ---------- */
-const VIEW_LABELS = { home: '', share: '分享发票', claim: '领取发票' };
+const VIEW_LABELS = { home: '', share: '分享票据～', claim: '领取票据～' };
 function showView(name) {
   for (const v of Object.keys(VIEW_LABELS)) $(`#view-${v}`).hidden = v !== name;
   $('#backHomeBtn').hidden = name === 'home';
@@ -131,9 +131,9 @@ function showView(name) {
 async function loadStats() {
   try {
     const s = await api('/api/stats');
-    $('#homeStats').textContent = `当前可用票据 ${s.available} 张 · 已领取 ${s.claimed} 张`;
+    $('#homeStats').textContent = `池子里还有 ${s.available} 张票据在等你 · 已被抱走 ${s.claimed} 张啦`;
   } catch {
-    $('#homeStats').textContent = '统计加载失败，请刷新重试';
+    $('#homeStats').textContent = '数字宝宝们没加载出来，刷新一下试试嘛';
   }
 }
 
@@ -143,16 +143,16 @@ $('#fileInput').addEventListener('change', (e) => {
   pickedFile = e.target.files[0] || null;
   $('#fileText').textContent = pickedFile
     ? pickedFile.name
-    : '点击选择发票文件（jpg / png / webp / pdf，不超过 10MB）';
+    : '点一下挑票据文件呀（jpg / png / webp / pdf，10MB 以内哦）';
   $('#filePicker').classList.toggle('has-file', Boolean(pickedFile));
 });
 
 $('#shareForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!pickedFile) return toast('请选择发票文件', 'err');
+  if (!pickedFile) return toast('票据文件还没挑哦', 'err');
   const btn = $('#shareSubmit');
   btn.disabled = true;
-  btn.textContent = '提交中…';
+  btn.textContent = '飞奔提交中…';
   try {
     const fd = new FormData();
     fd.append('file', pickedFile);
@@ -163,17 +163,17 @@ $('#shareForm').addEventListener('submit', async (e) => {
     fd.append('uploader_contact', $('#shareContact').value);
     fd.append('remark', $('#shareRemark').value);
     const inv = await api('/api/invoices', { method: 'POST', body: fd });
-    toast(`分享成功，发票 #${inv.id} 已进入票据池`);
+    toast(`分享成功～票据 #${inv.id} 已经跳进池子里咯`);
     e.target.reset();
     pickedFile = null;
-    $('#fileText').textContent = '点击选择发票文件（jpg / png / webp / pdf，不超过 10MB）';
+    $('#fileText').textContent = '点一下挑票据文件呀（jpg / png / webp / pdf，10MB 以内哦）';
     $('#filePicker').classList.remove('has-file');
     loadStats();
   } catch (err) {
     toast(err.message, 'err');
   } finally {
     btn.disabled = false;
-    btn.textContent = '提交分享';
+    btn.textContent = '分享出去咯';
   }
 });
 
@@ -183,19 +183,19 @@ function cardHtml(inv, { checkboxIdx = null, checked = false } = {}) {
     ? `<label class="pick"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} /></label>`
     : '';
   const action = inv.status === 'available'
-    ? `<button type="button" class="primary-btn small" data-claim="${inv.id}">领取到邮箱</button>`
-    : `<span class="badge claimed">已领取</span>`;
+    ? `<button type="button" class="primary-btn small" data-claim="${inv.id}">寄到我邮箱</button>`
+    : `<span class="badge claimed">已被抱走</span>`;
   return `
   <div class="invoice-card card ${inv.status === 'available' ? '' : 'is-claimed'}">
     ${control}
     <div class="amount">${money(inv.amount)}</div>
     <div class="meta">
       <span class="badge type">${esc(inv.invoice_type)}</span>
-      <span class="month">开票 ${esc(inv.invoice_month)}</span>
+      <span class="month">开票于 ${esc(inv.invoice_month)}</span>
     </div>
     ${inv.remark ? `<div class="remark">${esc(inv.remark)}</div>` : ''}
     <div class="foot">
-      <span class="date">上传于 ${fmtDate(inv.created_at)}</span>
+      <span class="date">分享于 ${fmtDate(inv.created_at)}</span>
       ${action}
     </div>
   </div>`;
@@ -208,7 +208,7 @@ let recItems = [];
 async function runRecommend() {
   const amount = Number($('#needAmount').value);
   const type = $('#needType').value;
-  if (!Number.isFinite(amount) || amount <= 0) return toast('请填写正确的需求金额', 'err');
+  if (!Number.isFinite(amount) || amount <= 0) return toast('想要的金额要填对哦，大于 0 才行', 'err');
   const btn = $('#matchBtn');
   btn.disabled = true;
   try {
@@ -230,10 +230,10 @@ function renderRecommend(data) {
   const notice = $('#recommendNotice');
   if (recItems.length === 0) {
     notice.hidden = false;
-    notice.textContent = '票据池暂无符合条件的可用票据';
+    notice.textContent = '池子空空如也，暂时没找到合适的票据呀～';
   } else if (!data.sufficient) {
     notice.hidden = false;
-    notice.textContent = `票据池可用总额不足（合计 ${money(data.total)}，低于需求 ${money(data.target)}），以下为全部可用票据`;
+    notice.textContent = `池子里的票据凑不够哦（现在共 ${money(data.total)}，离 ${money(data.target)} 还差一点），下面是可以抱走的全部票据啦`;
   } else {
     notice.hidden = true;
   }
@@ -254,18 +254,18 @@ function renderRecommend(data) {
 function updateRecommendSummary() {
   const checked = recItems.filter((i) => i.checked);
   if (checked.length > MAX_CLAIM) {
-    $('#recommendSummary').textContent = `单次最多领取 ${MAX_CLAIM} 张，当前已选 ${checked.length} 张，请取消部分勾选`;
+    $('#recommendSummary').textContent = `一次最多抱 ${MAX_CLAIM} 张哦，现在选了 ${checked.length} 张，先取消几张嘛`;
     $('#claimRecommendBtn').disabled = true;
     return;
   }
   const total = checked.reduce((s, i) => s + i.amount, 0);
   const target = lastRecommend ? lastRecommend.amount : 0;
   const diff = Math.round((total - target) * 100) / 100;
-  let text = `需求 ${money(target)} · 已选合计 ${money(total)}`;
+  let text = `想要 ${money(target)} · 已选合计 ${money(total)}`;
   if (checked.length) {
-    text += diff >= 0 ? `（超出 ${money(diff)}）` : `（低于需求 ${money(-diff)}）`;
+    text += diff >= 0 ? `（多出 ${money(diff)}）` : `（还差 ${money(-diff)}）`;
   }
-  $('#recommendSummary').textContent = checked.length ? text : '请至少勾选一张票据';
+  $('#recommendSummary').textContent = checked.length ? text : '先勾中一张小票据嘛';
   $('#claimRecommendBtn').disabled = checked.length === 0;
 }
 
@@ -287,8 +287,8 @@ async function loadManual() {
     manualLoaded = true;
     $('#manualList').innerHTML = data.items.length
       ? data.items.map((it) => cardHtml(it)).join('')
-        + (data.has_more ? `<p class="empty">当前筛选共 ${data.total} 条，仅显示前 ${data.items.length} 条，请缩小筛选范围</p>` : '')
-      : '<p class="empty">暂无符合条件的票据</p>';
+        + (data.has_more ? `<p class="empty">一共有 ${data.total} 条呢，先给你看前 ${data.items.length} 条，缩小范围找找吧</p>` : '')
+      : '<p class="empty">咦，一张符合条件的票据都没有呢</p>';
     $$('#manualList [data-claim]').forEach((b) =>
       b.addEventListener('click', () => openClaimModal([Number(b.dataset.claim)]))
     );
@@ -302,7 +302,7 @@ let claimIds = [];
 
 function openClaimModal(ids) {
   claimIds = ids;
-  $('#claimModalTitle').textContent = ids.length > 1 ? `领取 ${ids.length} 张发票到邮箱` : '领取发票到邮箱';
+  $('#claimModalTitle').textContent = ids.length > 1 ? `把 ${ids.length} 张票据寄到邮箱咯` : '把票据寄到邮箱咯';
   $('#claimEmail').value = '';
   $('#claimModal').hidden = false;
   $('#claimEmail').focus();
@@ -320,10 +320,10 @@ function refreshCurrentPanel() {
 
 $('#claimConfirm').addEventListener('click', async () => {
   const email = $('#claimEmail').value.trim();
-  if (!email) return toast('请填写邮箱地址', 'err');
+  if (!email) return toast('邮箱地址还空着呢', 'err');
   const btn = $('#claimConfirm');
   btn.disabled = true;
-  btn.textContent = '发送中…';
+  btn.textContent = '打包飞奔中…';
   try {
     const r = await api('/api/claims', {
       method: 'POST',
@@ -335,13 +335,13 @@ $('#claimConfirm').addEventListener('click', async () => {
     refreshCurrentPanel();
   } catch (err) {
     toast(err.message, 'err');
-    if (err.message.includes('已被领取')) {
+    if (err.message.includes('抱走')) {
       closeClaimModal();
       refreshCurrentPanel();
     }
   } finally {
     btn.disabled = false;
-    btn.textContent = '确认领取';
+    btn.textContent = '寄给我！';
   }
 });
 
@@ -387,7 +387,7 @@ $('#claimEmail').addEventListener('keydown', (e) => {
 
 $('#tokenConfirm').addEventListener('click', () => {
   const v = $('#tokenInput').value.trim();
-  if (!v) return toast('请输入访问令牌', 'err');
+  if (!v) return toast('小暗号不能为空哦', 'err');
   token = v;
   localStorage.setItem('vpToken', token);
   settleToken(true);
