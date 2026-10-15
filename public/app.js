@@ -116,12 +116,31 @@ function toast(msg, type = 'ok') {
   toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
 }
 
+// 表单校验失败：抖动提示 + 聚焦
+function flagInvalid(el) {
+  el.classList.remove('input-error');
+  void el.offsetWidth; // 重新触发抖动动画
+  el.classList.add('input-error');
+  el.focus();
+  el.addEventListener('input', () => el.classList.remove('input-error'), { once: true });
+}
+
+// 骨架屏
+function renderSkeletons(container, count = 6) {
+  container.innerHTML = Array.from({ length: count }, () => '<div class="skeleton-card" aria-hidden="true"></div>').join('');
+}
+
 /* ---------- 视图切换 ---------- */
 const VIEW_LABELS = { home: '', share: '分享票据～', claim: '领取票据～' };
 function showView(name) {
   for (const v of Object.keys(VIEW_LABELS)) $(`#view-${v}`).hidden = v !== name;
   $('#backHomeBtn').hidden = name === 'home';
-  $('#stepLabel').textContent = VIEW_LABELS[name];
+  const label = $('#stepLabel');
+  label.textContent = VIEW_LABELS[name];
+  // 重新触发步骤标签的弹出动画
+  label.style.animation = 'none';
+  void label.offsetWidth;
+  label.style.animation = '';
   window.scrollTo(0, 0);
   if (name === 'home') loadStats();
   if (name === 'claim' && !manualLoaded) loadManual();
@@ -139,20 +158,46 @@ async function loadStats() {
 
 /* ---------- 分享表单 ---------- */
 let pickedFile = null;
-$('#fileInput').addEventListener('change', (e) => {
-  pickedFile = e.target.files[0] || null;
-  $('#fileText').textContent = pickedFile
-    ? pickedFile.name
-    : '点一下挑票据文件呀（jpg / png / webp / pdf，10MB 以内哦）';
+const FILE_PLACEHOLDER = '点一下挑票据文件呀，拖进来也行（jpg / png / webp / pdf，10MB 以内哦）';
+
+function setPickedFile(file) {
+  pickedFile = file || null;
+  $('#fileText').textContent = pickedFile ? pickedFile.name : FILE_PLACEHOLDER;
   $('#filePicker').classList.toggle('has-file', Boolean(pickedFile));
+}
+
+$('#fileInput').addEventListener('change', (e) => setPickedFile(e.target.files[0]));
+
+// 拖拽上传
+const picker = $('#filePicker');
+['dragenter', 'dragover'].forEach((ev) =>
+  picker.addEventListener(ev, (e) => { e.preventDefault(); picker.classList.add('drag-over'); })
+);
+['dragleave', 'drop'].forEach((ev) =>
+  picker.addEventListener(ev, (e) => { e.preventDefault(); picker.classList.remove('drag-over'); })
+);
+picker.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) setPickedFile(file);
 });
 
 $('#shareForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!pickedFile) return toast('票据文件还没挑哦', 'err');
+  if (!pickedFile) {
+    picker.classList.remove('drag-over');
+    picker.style.animation = 'none';
+    void picker.offsetWidth;
+    picker.style.animation = 'shake 0.35s';
+    return toast('票据文件还没挑哦', 'err');
+  }
+  if (!Number($('#shareAmount').value) || Number($('#shareAmount').value) <= 0) {
+    flagInvalid($('#shareAmount'));
+    return toast('票据金额要填对哦，大于 0 才行', 'err');
+  }
   const btn = $('#shareSubmit');
   btn.disabled = true;
-  btn.textContent = '飞奔提交中…';
+  btn.classList.add('is-loading');
+  btn.textContent = '飞奔提交中';
   try {
     const fd = new FormData();
     fd.append('file', pickedFile);
@@ -165,28 +210,27 @@ $('#shareForm').addEventListener('submit', async (e) => {
     const inv = await api('/api/invoices', { method: 'POST', body: fd });
     toast(`分享成功～票据 #${inv.id} 已经跳进池子里咯`);
     e.target.reset();
-    pickedFile = null;
-    $('#fileText').textContent = '点一下挑票据文件呀（jpg / png / webp / pdf，10MB 以内哦）';
-    $('#filePicker').classList.remove('has-file');
+    setPickedFile(null);
     loadStats();
   } catch (err) {
     toast(err.message, 'err');
   } finally {
     btn.disabled = false;
+    btn.classList.remove('is-loading');
     btn.textContent = '分享出去咯';
   }
 });
 
 /* ---------- 票据卡片渲染 ---------- */
-function cardHtml(inv, { checkboxIdx = null, checked = false } = {}) {
+function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {}) {
   const control = checkboxIdx !== null
-    ? `<label class="pick"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} /></label>`
+    ? `<label class="pick" aria-label="选中这张票据"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} /></label>`
     : '';
   const action = inv.status === 'available'
     ? `<button type="button" class="primary-btn small" data-claim="${inv.id}">寄到我邮箱</button>`
     : `<span class="badge claimed">已被抱走</span>`;
   return `
-  <div class="invoice-card card ${inv.status === 'available' ? '' : 'is-claimed'}">
+  <div class="invoice-card card ${inv.status === 'available' ? '' : 'is-claimed'}" style="animation-delay: ${Math.min(delayIdx, 8) * 55}ms">
     ${control}
     <div class="amount">${money(inv.amount)}</div>
     <div class="meta">
@@ -208,9 +252,17 @@ let recItems = [];
 async function runRecommend() {
   const amount = Number($('#needAmount').value);
   const type = $('#needType').value;
-  if (!Number.isFinite(amount) || amount <= 0) return toast('想要的金额要填对哦，大于 0 才行', 'err');
+  if (!Number.isFinite(amount) || amount <= 0) {
+    flagInvalid($('#needAmount'));
+    return toast('想要的金额要填对哦，大于 0 才行', 'err');
+  }
   const btn = $('#matchBtn');
   btn.disabled = true;
+  btn.classList.add('is-loading');
+  $('#recommendResult').hidden = false;
+  $('#recommendNotice').hidden = true;
+  $('#recommendSummaryBar').hidden = true;
+  renderSkeletons($('#recommendList'), 3);
   try {
     const qs = new URLSearchParams({ amount: String(amount) });
     if (type) qs.set('invoice_type', type);
@@ -219,9 +271,12 @@ async function runRecommend() {
     recItems = data.items.map((it) => ({ ...it, checked: true }));
     renderRecommend(data);
   } catch (err) {
+    $('#recommendList').innerHTML = '';
+    $('#recommendResult').hidden = true;
     toast(err.message, 'err');
   } finally {
     btn.disabled = false;
+    btn.classList.remove('is-loading');
   }
 }
 
@@ -240,7 +295,7 @@ function renderRecommend(data) {
   $('#recommendSummaryBar').hidden = recItems.length === 0;
 
   $('#recommendList').innerHTML = recItems
-    .map((it, idx) => cardHtml(it, { checkboxIdx: idx, checked: it.checked }))
+    .map((it, idx) => cardHtml(it, { checkboxIdx: idx, checked: it.checked, delayIdx: idx }))
     .join('');
   $$('#recommendList input[type=checkbox]').forEach((cb) => {
     cb.addEventListener('change', () => {
@@ -282,12 +337,13 @@ async function loadManual() {
   if ($('#filterFrom').value) qs.set('month_from', $('#filterFrom').value);
   if ($('#filterTo').value) qs.set('month_to', $('#filterTo').value);
   qs.set('status', $('#filterStatus').value || 'available');
+  renderSkeletons($('#manualList'));
   try {
     const data = await api(`/api/invoices?${qs}`);
     manualLoaded = true;
     $('#manualList').innerHTML = data.items.length
-      ? data.items.map((it) => cardHtml(it)).join('')
-        + (data.has_more ? `<p class="empty">一共有 ${data.total} 条呢，先给你看前 ${data.items.length} 条，缩小范围找找吧</p>` : '')
+      ? data.items.map((it, idx) => cardHtml(it, { delayIdx: idx })).join('')
+      + (data.has_more ? `<p class="empty">一共有 ${data.total} 条呢，先给你看前 ${data.items.length} 条，缩小范围找找吧</p>` : '')
       : '<p class="empty">咦，一张符合条件的票据都没有呢</p>';
     $$('#manualList [data-claim]').forEach((b) =>
       b.addEventListener('click', () => openClaimModal([Number(b.dataset.claim)]))
@@ -320,10 +376,14 @@ function refreshCurrentPanel() {
 
 $('#claimConfirm').addEventListener('click', async () => {
   const email = $('#claimEmail').value.trim();
-  if (!email) return toast('邮箱地址还空着呢', 'err');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    flagInvalid($('#claimEmail'));
+    return toast('邮箱地址好像不对哦，再看看嘛', 'err');
+  }
   const btn = $('#claimConfirm');
   btn.disabled = true;
-  btn.textContent = '打包飞奔中…';
+  btn.classList.add('is-loading');
+  btn.textContent = '打包飞奔中';
   try {
     const r = await api('/api/claims', {
       method: 'POST',
@@ -341,6 +401,7 @@ $('#claimConfirm').addEventListener('click', async () => {
     }
   } finally {
     btn.disabled = false;
+    btn.classList.remove('is-loading');
     btn.textContent = '寄给我！';
   }
 });
@@ -354,6 +415,8 @@ function switchTab(name) {
   const isRec = name === 'recommend';
   $('#tabRecommend').classList.toggle('active', isRec);
   $('#tabManual').classList.toggle('active', !isRec);
+  $('#tabRecommend').setAttribute('aria-selected', String(isRec));
+  $('#tabManual').setAttribute('aria-selected', String(!isRec));
   $('#panelRecommend').hidden = !isRec;
   $('#panelManual').hidden = isRec;
   if (!isRec && !manualLoaded) loadManual();
@@ -395,6 +458,12 @@ $('#tokenConfirm').addEventListener('click', () => {
 $('#tokenCancel').addEventListener('click', () => settleToken(false));
 $('#tokenInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#tokenConfirm').click();
+});
+
+// Esc 关闭打开的弹窗
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!$('#claimModal').hidden) closeClaimModal();
 });
 
 $('#queryBtn').addEventListener('click', loadManual);

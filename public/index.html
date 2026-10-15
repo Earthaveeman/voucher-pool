@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="票据分享池：闲置票据别睡大觉，分享给需要的小伙伴，一键打包飞进邮箱～" />
+  <meta name="theme-color" content="#fff7ee" />
   <title>票据分享池</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="topbar">
-    <button type="button" class="link-btn" id="backHomeBtn" hidden>&larr; 溜回首页</button>
+    <button type="button" class="link-btn" id="backHomeBtn" aria-label="返回首页" hidden>&larr; 溜回首页</button>
     <span class="brand">票据分享池</span>
-    <span class="step-label" id="stepLabel"></span>
+    <span class="step-label" id="stepLabel" aria-live="polite"></span>
   </header>
 
   <main class="container">
@@ -21,7 +23,7 @@
         <p class="slogan">闲置票据别睡大觉，分享给需要的小伙伴，一键打包飞进邮箱～</p>
         <div class="big-buttons">
           <button type="button" class="big-btn share-btn" id="goShareBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 16V4m0 0l-4 4m4-4l4 4" />
               <path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" />
             </svg>
@@ -29,7 +31,7 @@
             <span class="big-sub">把票据文件传上来，让它跳进公共票据池～</span>
           </button>
           <button type="button" class="big-btn need-btn" id="goNeedBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="5" width="18" height="14" rx="2" />
               <path d="M3 7l9 6 9-6" />
             </svg>
@@ -49,7 +51,7 @@
           <span class="field-label">票据文件 <em>*</em></span>
           <label class="file-picker" id="filePicker" for="fileInput">
             <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.pdf" hidden />
-            <span class="file-text" id="fileText">点一下挑票据文件呀（jpg / png / webp / pdf，10MB 以内哦）</span>
+            <span class="file-text" id="fileText">点一下挑票据文件呀，拖进来也行（jpg / png / webp / pdf，10MB 以内哦）</span>
           </label>
         </div>
         <div class="field-row">
@@ -87,13 +89,13 @@
     <!-- 视图 3：领取页 -->
     <section id="view-claim" class="view" hidden>
       <h2 class="view-title">来领票据咯</h2>
-      <div class="subtabs">
-        <button type="button" class="subtab active" id="tabRecommend">聪明推荐</button>
-        <button type="button" class="subtab" id="tabManual">慢慢挑</button>
+      <div class="subtabs" role="tablist" aria-label="领取方式">
+        <button type="button" class="subtab active" id="tabRecommend" role="tab" aria-selected="true" aria-controls="panelRecommend">聪明推荐</button>
+        <button type="button" class="subtab" id="tabManual" role="tab" aria-selected="false" aria-controls="panelManual">慢慢挑</button>
       </div>
 
       <!-- 子标签 A：智能推荐 -->
-      <div id="panelRecommend" class="panel">
+      <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend">
         <div class="card filter-card">
           <label class="field inline">
             <span class="field-label">想要的金额 <em>*</em></span>
@@ -116,15 +118,15 @@
       </div>
 
       <!-- 子标签 B：手动筛选 -->
-      <div id="panelManual" class="panel" hidden>
+      <div id="panelManual" class="panel" role="tabpanel" aria-labelledby="tabManual" hidden>
         <div class="card filter-card">
           <label class="field inline">
             <span class="field-label">金额范围</span>
-            <div class="range">
+            <span class="range">
               <input type="number" id="filterMin" min="0" step="0.01" placeholder="下限" />
               <span>—</span>
               <input type="number" id="filterMax" step="0.01" placeholder="上限" />
-            </div>
+            </span>
           </label>
           <label class="field inline">
             <span class="field-label">票据类型</span>
@@ -132,11 +134,11 @@
           </label>
           <label class="field inline">
             <span class="field-label">开票年月</span>
-            <div class="range">
+            <span class="range">
               <input type="month" id="filterFrom" />
               <span>—</span>
               <input type="month" id="filterTo" />
-            </div>
+            </span>
           </label>
           <label class="field inline">
             <span class="field-label">状态</span>
@@ -158,7 +160,7 @@
 
   <!-- 领取邮箱弹窗 -->
   <div class="modal-mask" id="claimModal" hidden>
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="claimModalTitle">
       <h3 id="claimModalTitle">把票据寄到邮箱咯</h3>
       <p class="modal-tip">票据文件马上打包寄给您，领走就立刻锁定啦，邮箱千万别写错哦～</p>
       <label class="field">
@@ -174,8 +176,8 @@
 
   <!-- 访问小暗号弹窗（服务端配置 ACCESS_TOKEN 后启用） -->
   <div class="modal-mask" id="tokenModal" hidden>
-    <div class="modal">
-      <h3>进门小暗号</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tokenModalTitle">
+      <h3 id="tokenModalTitle">进门小暗号</h3>
       <p class="modal-tip">这里上了小锁呢，悄悄输入访问小暗号就能进。暗号会记在本机浏览器里，下次自动带上来哦～</p>
       <label class="field">
         <span class="field-label">访问小暗号 <em>*</em></span>
@@ -188,7 +190,7 @@
     </div>
   </div>
 
-  <div id="toast" class="toast" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="app.js"></script>
 </body>
