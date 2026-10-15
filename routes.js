@@ -240,15 +240,13 @@ router.get('/invoices/recommend', (req, res, next) => {
     let sumCents = 0;
     while (sumCents < targetCents && selectedIds.size < sorted.length) {
       const gap = targetCents - sumCents;
-      const oldest = sorted.find((i) => !selectedIds.has(i.id));
-      let pick;
-      if (oldest.cents <= gap) {
-        // 纳入后不超额：严格按较早日期优先
-        pick = oldest;
-      } else {
-        // 收尾：取"金额≥缺口"的最小者（金额相同取日期较早）
-        pick = byAmount.find((i) => !selectedIds.has(i.id) && i.cents >= gap) || oldest;
-      }
+      // 累计阶段：在"能装入缺口"的候选中按较早日期优先纳入；
+      // 仅当剩余票据全部超过缺口时才进入收尾，取 ≥ 缺口的最小者（金额相同取日期较早）
+      const fitOldest = sorted.find((i) => !selectedIds.has(i.id) && i.cents <= gap);
+      const pick =
+        fitOldest ||
+        byAmount.find((i) => !selectedIds.has(i.id) && i.cents >= gap) ||
+        sorted.find((i) => !selectedIds.has(i.id)); // 兜底：循环条件保证必有未选票据
       selectedIds.add(pick.id);
       selected.push(pick);
       sumCents += pick.cents;
