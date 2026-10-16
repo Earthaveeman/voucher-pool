@@ -246,6 +246,29 @@ body {
   50% { transform: translateX(5px); }
   75% { transform: translateX(-3px); }
 }
+/* ===== 悄悄话备注：15 字上限 ===== */
+.remark-counter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+}
+.remark-tip {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pink-dark);
+  animation: popIn 0.3s var(--bounce);
+}
+.remark-tip.shake { animation: shake 0.35s; }
+.char-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+.char-count.is-full { color: var(--pink-dark); }
 .field-row { display: flex; gap: 16px; }
 
 /* ===== 票据类型多选下拉框 ===== */
@@ -438,23 +461,27 @@ body {
 .filter-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
 .filter-card .field.inline { min-width: 170px; }
 /* “慢慢挑”筛选区：两行两列网格，上下宽度对齐
-   第一行：金额范围 | 开票年月；第二行：票据类型 | 状态；操作按钮居右跨两行 */
+   第一行：金额范围 | 开票年月；第二行：状态 | 票据类型
+   操作按钮固定在右下角，与最后一行筛选条件底对齐，符合“先筛选、后操作”的视线动线 */
 #panelManual .filter-card {
   display: grid;
   grid-template-columns: minmax(300px, 340px) minmax(170px, 200px) auto;
+  grid-template-rows: auto auto;
+  gap: 16px 22px;
   align-items: end;
 }
 #panelManual .filter-actions {
   margin-left: 0;
   grid-column: 3;
-  grid-row: 1 / span 2;
-  align-self: center;
+  grid-row: 2;
+  align-self: end;
+  align-items: stretch;
 }
 #panelManual .filter-card .field.inline { min-width: 0; }
 /* 慢慢挑的票据类型多选：拉长以完整显示全选后的所有类型 */
 .range { display: flex; align-items: center; gap: 8px; }
 .range span { color: var(--muted); font-weight: 700; }
-.filter-actions { display: flex; gap: 10px; margin-left: auto; }
+.filter-actions { display: flex; gap: 10px; margin-left: auto; align-items: stretch; }
 
 /* ===== 票据卡片列表 ===== */
 .card-list {
@@ -620,6 +647,12 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* 中等宽度：筛选条件降为两列，操作按钮独占一行靠右，避免挤压筛选字段 */
+@media (max-width: 800px) {
+  #panelManual .filter-card { grid-template-columns: 1fr 1fr; }
+  #panelManual .filter-actions { grid-column: 1 / -1; grid-row: auto; justify-content: flex-end; }
 }
 
 /* ===== 响应式 ===== */

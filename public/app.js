@@ -260,6 +260,38 @@ picker.addEventListener('drop', (e) => {
   if (file) setPickedFile(file);
 });
 
+/* ---------- 悄悄话备注：15 字上限 ---------- */
+const REMARK_MAX = 15;
+const remarkEl = $('#shareRemark');
+const remarkTip = $('#remarkTip');
+const remarkCount = $('#remarkCount');
+let remarkTipTimer = null;
+
+function updateRemarkCount() {
+  remarkCount.textContent = `${remarkEl.value.length}/${REMARK_MAX}`;
+  remarkCount.classList.toggle('is-full', remarkEl.value.length >= REMARK_MAX);
+}
+function clipRemark() {
+  if (remarkEl.value.length <= REMARK_MAX) return;
+  // 超出部分直接拦下，不让他继续说悄悄话
+  remarkEl.value = remarkEl.value.slice(0, REMARK_MAX);
+  updateRemarkCount();
+  remarkTip.hidden = false;
+  remarkTip.classList.remove('shake');
+  void remarkTip.offsetWidth; // 重新触发抖动动画
+  remarkTip.classList.add('shake');
+  clearTimeout(remarkTipTimer);
+  remarkTipTimer = setTimeout(() => { remarkTip.hidden = true; }, 2600);
+}
+remarkEl.addEventListener('input', (e) => {
+  updateRemarkCount();
+  if (!e.isComposing) clipRemark();
+});
+remarkEl.addEventListener('compositionend', () => {
+  updateRemarkCount();
+  clipRemark();
+});
+
 $('#shareForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!pickedFile) {
@@ -288,6 +320,8 @@ $('#shareForm').addEventListener('submit', async (e) => {
     const inv = await api('/api/invoices', { method: 'POST', body: fd });
     toast(`分享成功～票据 #${inv.id} 已经跳进池子里咯`);
     e.target.reset();
+    updateRemarkCount();
+    remarkTip.hidden = true;
     setPickedFile(null);
     resetShareMonth();
     loadStats();
@@ -549,6 +583,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('#queryBtn').addEventListener('click', loadManual);
+// 筛选输入框内按回车直接查询
+['filterMin', 'filterMax', 'filterMonth'].forEach((id) => {
+  $('#' + id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#queryBtn').click();
+  });
+});
 $('#resetBtn').addEventListener('click', () => {
   ['filterMin', 'filterMax', 'filterMonth'].forEach((id) => { $('#' + id).value = ''; });
   msClear($('#filterType'));

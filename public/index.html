@@ -76,7 +76,11 @@
         </div>
         <label class="field">
           <span class="field-label">悄悄话备注</span>
-          <textarea id="shareRemark" maxlength="200" rows="2" placeholder="想说什么悄悄话嘛"></textarea>
+          <textarea id="shareRemark" maxlength="20" rows="2" placeholder="想说什么悄悄话嘛"></textarea>
+          <div class="remark-counter">
+            <span class="remark-tip" id="remarkTip" hidden>悄悄话太长啦，说 15 个字就好咯～</span>
+            <span class="char-count" id="remarkCount">0/15</span>
+          </div>
         </label>
         <button type="submit" class="primary-btn" id="shareSubmit">分享出去咯</button>
       </form>
@@ -106,16 +110,16 @@
             <input type="month" id="filterMonth" />
           </div>
           <div class="field inline">
-            <span class="field-label">票据类型（可多选）</span>
-            <div id="filterType"></div>
-          </div>
-          <div class="field inline">
             <span class="field-label">状态</span>
             <select id="filterStatus" required>
               <option value="">全部</option>
               <option value="available">还在池里</option>
               <option value="claimed">已被抱走</option>
             </select>
+          </div>
+          <div class="field inline">
+            <span class="field-label">票据类型（可多选）</span>
+            <div id="filterType"></div>
           </div>
           <div class="filter-actions">
             <button type="button" class="primary-btn" id="queryBtn">找找看</button>
