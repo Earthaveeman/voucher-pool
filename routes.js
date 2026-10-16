@@ -165,7 +165,8 @@ router.get('/invoices', (req, res, next) => {
     const where = [];
     const params = [];
 
-    const status = q.status === 'claimed' ? 'claimed' : q.status === 'all' ? null : 'available';
+    // 状态：单选下拉，不传/传空即查询全部
+    const status = q.status === 'available' || q.status === 'claimed' ? q.status : null;
     if (status) {
       where.push('status = ?');
       params.push(status);
@@ -193,6 +194,12 @@ router.get('/invoices', (req, res, next) => {
         params.push(...types);
       }
     }
+    if (q.invoice_month) {
+      // 精确匹配某个月，如 2026-05
+      if (!MONTH_RE.test(q.invoice_month)) throw new HttpError(400, '开票年月要写成 YYYY-MM 哦');
+      where.push('invoice_month = ?');
+      params.push(q.invoice_month);
+    }
     if (q.month_from) {
       if (!MONTH_RE.test(q.month_from)) throw new HttpError(400, '起始年月要写成 YYYY-MM 哦');
       where.push('invoice_month >= ?');
@@ -209,9 +216,9 @@ router.get('/invoices', (req, res, next) => {
     const pageSize = Math.min(200, Math.max(1, Number(q.page_size) || 100));
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const total = db.prepare(`SELECT COUNT(*) AS c FROM invoices ${whereSql}`).get(...params).c;
-    // 固定按开票年月升序（同年月按入库先后），不提供其他排序方式
+    // 固定排序：未认领在前、已被认领在后；组内按开票年月升序（同年月按入库先后）
     const items = db
-      .prepare(`SELECT * FROM invoices ${whereSql} ORDER BY invoice_month ASC, id ASC LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM invoices ${whereSql} ORDER BY status = 'claimed' ASC, invoice_month ASC, id ASC LIMIT ? OFFSET ?`)
       .all(...params, pageSize, (page - 1) * pageSize)
       .map(toPublic);
     res.json({ items, total, page, page_size: pageSize, has_more: page * pageSize < total });
@@ -225,11 +232,14 @@ router.get('/invoices/recommend', (req, res, next) => {
   try {
     const target = Number(req.query.amount);
     if (!Number.isFinite(target) || target <= 0) throw new HttpError(400, '想要的金额要填对哦，大于 0 才行');
-    const type = req.query.invoice_type;
-    if (type && !INVOICE_TYPES.includes(type)) throw new HttpError(400, '这个票据类型小系统不认识呀');
+    // 支持多选：invoice_type 参数可重复出现，一个都不传即不限类型
+    const types = (Array.isArray(req.query.invoice_type) ? req.query.invoice_type : [req.query.invoice_type]).filter(Boolean);
+    for (const t of types) {
+      if (!INVOICE_TYPES.includes(t)) throw new HttpError(400, '这个票据类型小系统不认识呀');
+    }
 
-    const pool = type
-      ? db.prepare(`SELECT * FROM invoices WHERE status='available' AND invoice_type = ?`).all(type)
+    const pool = types.length
+      ? db.prepare(`SELECT * FROM invoices WHERE status='available' AND invoice_type IN (${types.map(() => '?').join(',')})`).all(...types)
       : db.prepare(`SELECT * FROM invoices WHERE status='available'`).all();
 
     // 金额统一换算为"分"（整数）参与比较，规避二进制浮点误差（如 0.1 + 0.2 !== 0.3）

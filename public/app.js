@@ -10,6 +10,7 @@ let MAX_CLAIM = 10;
 /* ---------- 初始化下拉框 ---------- */
 function fillSelect(sel, allLabel) {
   const el = $(sel);
+  el.innerHTML = ''; // 每次重建，避免重复调用时选项叠加
   if (allLabel) {
     const opt = document.createElement('option');
     opt.value = '';
@@ -24,11 +25,77 @@ function fillSelect(sel, allLabel) {
   }
 }
 
+/* ---------- 多选下拉框（票据类型） ---------- */
+function msValues(el) {
+  return [...el.querySelectorAll('.ms-menu input:checked')].map((i) => i.value);
+}
+
+function msUpdateLabel(el) {
+  const vals = msValues(el);
+  el.querySelector('.ms-label').textContent = vals.length ? vals.join('、') : (el.dataset.placeholder || '');
+  el.classList.toggle('has-value', vals.length > 0);
+}
+
+function msClear(el) {
+  el.querySelectorAll('.ms-menu input').forEach((i) => { i.checked = false; });
+  msUpdateLabel(el);
+}
+
+function closeMsMenus() {
+  $$('.multi-select').forEach((ms) => {
+    ms.classList.remove('open');
+    ms.querySelector('.ms-menu').hidden = true;
+    ms.querySelector('.ms-toggle').setAttribute('aria-expanded', 'false');
+  });
+}
+
+// 构建/刷新一个多选下拉框；TYPES 更新后重复调用即可刷新选项，已勾选项保持
+function buildMultiSelect(el, placeholder) {
+  if (!el) return;
+  el.dataset.placeholder = placeholder;
+  if (!el.dataset.msReady) {
+    el.dataset.msReady = '1';
+    el.classList.add('multi-select');
+    el.innerHTML = `
+      <button type="button" class="ms-toggle" aria-haspopup="listbox" aria-expanded="false">
+        <span class="ms-label"></span>
+        <span class="ms-arrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="ms-menu" hidden></div>`;
+    const toggle = el.querySelector('.ms-toggle');
+    const menu = el.querySelector('.ms-menu');
+    toggle.addEventListener('click', () => {
+      const willOpen = menu.hidden;
+      closeMsMenus();
+      menu.hidden = !willOpen;
+      el.classList.toggle('open', willOpen);
+      toggle.setAttribute('aria-expanded', String(willOpen));
+    });
+    document.addEventListener('click', (e) => {
+      if (!el.contains(e.target)) {
+        menu.hidden = true;
+        el.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+  const menu = el.querySelector('.ms-menu');
+  menu.innerHTML = TYPES.map((t) =>
+    `<label class="ms-option"><input type="checkbox" value="${esc(t)}" /><span>${esc(t)}</span></label>`
+  ).join('');
+  menu.querySelectorAll('input').forEach((cb) =>
+    cb.addEventListener('change', () => {
+      msUpdateLabel(el);
+      el.dispatchEvent(new Event('change'));
+    })
+  );
+  msUpdateLabel(el);
+}
+
 function fillSelects() {
-  for (const sel of ['#shareType', '#needType', '#filterType']) $(sel).innerHTML = '';
   fillSelect('#shareType');
-  fillSelect('#needType', '全都想要');
-  fillSelect('#filterType'); // 多选框，默认不选即查询全部
+  buildMultiSelect($('#filterType'), '全部'); // 未选时显示灰色“全部”占位
+  buildMultiSelect($('#needType'), '全部');
 }
 fillSelects(); // 先渲染兜底清单，initMeta 成功后以服务端清单刷新
 
@@ -263,7 +330,7 @@ let recItems = [];
 
 async function runRecommend() {
   const amount = Number($('#needAmount').value);
-  const type = $('#needType').value;
+  const types = msValues($('#needType'));
   if (!Number.isFinite(amount) || amount <= 0) {
     flagInvalid($('#needAmount'));
     return toast('想要的金额要填对哦，大于 0 才行', 'err');
@@ -277,9 +344,9 @@ async function runRecommend() {
   renderSkeletons($('#recommendList'), 3);
   try {
     const qs = new URLSearchParams({ amount: String(amount) });
-    if (type) qs.set('invoice_type', type);
+    for (const t of types) qs.append('invoice_type', t);
     const data = await api(`/api/invoices/recommend?${qs}`);
-    lastRecommend = { amount, type };
+    lastRecommend = { amount, types };
     recItems = data.items.map((it) => ({ ...it, checked: true }));
     renderRecommend(data);
   } catch (err) {
@@ -345,13 +412,12 @@ async function loadManual() {
   const max = $('#filterMax').value;
   if (min) qs.set('min_amount', min);
   if (max) qs.set('max_amount', max);
-  // 票据类型为多选，选中的类型以重复参数传给后端；一个都不选即查询全部
-  for (const opt of $('#filterType').selectedOptions) {
-    if (opt.value) qs.append('invoice_type', opt.value);
-  }
-  if ($('#filterFrom').value) qs.set('month_from', $('#filterFrom').value);
-  if ($('#filterTo').value) qs.set('month_to', $('#filterTo').value);
-  qs.set('status', $('#filterStatus').value || 'available');
+  // 票据类型多选：选中的类型以重复参数传给后端；一个都不选即查询全部
+  for (const t of msValues($('#filterType'))) qs.append('invoice_type', t);
+  // 开票年月：精确匹配，不选即不限制
+  if ($('#filterMonth').value) qs.set('invoice_month', $('#filterMonth').value);
+  // 状态：不选即查询全部
+  if ($('#filterStatus').value) qs.set('status', $('#filterStatus').value);
   renderSkeletons($('#manualList'));
   try {
     const data = await api(`/api/invoices?${qs}`);
@@ -479,13 +545,14 @@ $('#tokenInput').addEventListener('keydown', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!$('#claimModal').hidden) closeClaimModal();
+  closeMsMenus();
 });
 
 $('#queryBtn').addEventListener('click', loadManual);
 $('#resetBtn').addEventListener('click', () => {
-  ['filterMin', 'filterMax', 'filterFrom', 'filterTo'].forEach((id) => { $('#' + id).value = ''; });
-  $$('#filterType option').forEach((o) => { o.selected = false; });
-  $('#filterStatus').value = 'available';
+  ['filterMin', 'filterMax', 'filterMonth'].forEach((id) => { $('#' + id).value = ''; });
+  msClear($('#filterType'));
+  $('#filterStatus').value = '';
   loadManual();
 });
 
