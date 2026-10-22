@@ -283,14 +283,61 @@ function showView(name) {
 }
 
 /* ---------- 首页统计 ---------- */
-async function loadStats() {
+// 文案池：俏皮可爱风，每次加载随机挑一条展示
+const STATS_TEMPLATES = [
+  '池子里还有 {n} 张票据，累计帮助小伙伴解围 {m} 次啦',
+  '{n} 张票据池里蹲蹲，累计已送出 {m} 次小帮助',
+  '池子里咕噜着 {n} 张票据，已助力小伙伴 {m} 次啦',
+  '{n} 张票据在池子里等你捞，好运已派送 {m} 次啦',
+  '池子现存 {n} 张票据小可爱，帮忙值已攒到 {m} 次啦',
+  '池子里晃悠着 {n} 张票据，累计送温暖 {m} 次啦',
+];
+const STATS_POLL_INTERVAL = 60 * 1000; // 每隔 1 分钟查一次
+let statsRendered = false; // 首次渲染用 innerHTML，之后只翻动变化的数字
+
+function statsHtml(n, m) {
+  const num = (key, val, cls) =>
+    `<span class="stat-num ${cls}"><span class="flip" data-key="${key}">${val}</span></span>`;
+  const tpl = STATS_TEMPLATES[Math.floor(Math.random() * STATS_TEMPLATES.length)];
+  return tpl
+    .replace('{n}', num('n', n, 'stat-n'))
+    .replace('{m}', num('m', m, 'stat-m'));
+}
+
+// 翻牌特效：数字有变化时先翻出再翻入
+function flipNum(key, val) {
+  const el = $(`#homeStats .flip[data-key="${key}"]`);
+  if (!el) return;
+  const text = String(val);
+  if (el.textContent === text) return;
+  el.classList.add('flip-out');
+  setTimeout(() => {
+    el.textContent = text;
+    el.classList.remove('flip-out');
+    el.classList.add('flip-in');
+    setTimeout(() => el.classList.remove('flip-in'), 320);
+  }, 160);
+}
+
+async function loadStats(silent = false) {
   try {
     const s = await api('/api/stats');
-    $('#homeStats').textContent = `池子里还有 ${s.available} 张票据在等你 · 已被抱走 ${s.claimed} 张啦`;
+    if (!statsRendered) {
+      $('#homeStats').innerHTML = statsHtml(s.available, s.claimed);
+      statsRendered = true;
+    } else {
+      flipNum('n', s.available);
+      flipNum('m', s.claimed);
+    }
   } catch {
-    $('#homeStats').textContent = '数字宝宝们没加载出来，刷新一下试试嘛';
+    if (!silent) $('#homeStats').textContent = '数字宝宝们没加载出来，刷新一下试试嘛';
   }
 }
+
+// 首页可见时每 1 分钟轮询一次，有变化就翻牌
+setInterval(() => {
+  if (statsRendered && !$('#view-home').hidden) loadStats(true);
+}, STATS_POLL_INTERVAL);
 
 /* ---------- 分享表单 ---------- */
 let pickedFile = null;

@@ -194,6 +194,32 @@ body {
   font-weight: 600;
   animation: popIn 0.4s var(--bounce);
 }
+/* 统计数字：n 薄荷绿、m 蜜粉，加粗放大 */
+.stat-num {
+  display: inline-block;
+  padding: 0 2px;
+  font-size: 16px;
+  font-weight: 800;
+  perspective: 220px;
+}
+.stat-n { color: var(--teal-dark); }
+.stat-m { color: var(--pink); }
+/* 翻牌特效 */
+.stat-num .flip {
+  display: inline-block;
+  min-width: 1ch;
+  text-align: center;
+  transform-origin: 50% 50%;
+}
+.stat-num .flip.flip-out { animation: flipOut 0.16s ease-in forwards; }
+.stat-num .flip.flip-in { animation: flipIn 0.32s var(--bounce); }
+@keyframes flipOut {
+  to { transform: rotateX(-90deg); opacity: 0.2; }
+}
+@keyframes flipIn {
+  from { transform: rotateX(90deg); opacity: 0.2; }
+  to { transform: rotateX(0deg); opacity: 1; }
+}
 @keyframes popIn {
   from { opacity: 0; transform: scale(0.85); }
   to { opacity: 1; transform: scale(1); }
