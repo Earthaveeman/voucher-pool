@@ -119,128 +119,7 @@ body {
   0%, 100% { transform: translateY(0) rotate(-0.6deg); }
   50% { transform: translateY(-6px) rotate(0.6deg); }
 }
-.slogan { color: var(--muted); font-size: 16px; margin: 0 0 18px; }
-
-/* ===== 首页袋鼠吉祥物 ===== */
-.mascot-wrap {
-  position: relative;
-  width: fit-content;
-  margin: 0 auto 26px;
-}
-.mascot {
-  display: block;
-  width: 116px;
-  height: auto;
-  cursor: pointer;
-  animation: bob 4.2s ease-in-out infinite;
-  transition: transform 0.25s var(--bounce);
-}
-/* 瞳孔跟随：JS 以 rAF 更新位移，配合短过渡实现平滑追视 */
-.mascot .pupil { transition: transform 0.12s ease-out; }
-/* 星星眼与张嘴默认隐藏 */
-.mascot .star-eye, .mascot .mouth-open { display: none; }
-.mascot .paw { transform-box: fill-box; transform-origin: 50% 85%; }
-/* 长耳朵：默认微微外八，竖起时绕耳根旋转 */
-.mascot .ear { transform-box: fill-box; transform-origin: 50% 88%; transition: transform 0.25s var(--bounce); }
-.mascot .ear-l { transform: rotate(-14deg); }
-.mascot .ear-r { transform: rotate(14deg); }
-/* 袋里小袋鼠：探头时整体上移 */
-.mascot .joey { transition: transform 0.3s var(--bounce); }
-
-/* 点击袋鼠：压缩-弹跳反馈（boing） */
-.mascot.is-boing { animation: boing 0.6s var(--bounce); }
-@keyframes boing {
-  0% { transform: scale(1, 1); }
-  25% { transform: scale(1.12, 0.84); }
-  48% { transform: scale(0.94, 1.08) translateY(-18px); }
-  70% { transform: scale(1.05, 0.92) translateY(0); }
-  100% { transform: scale(1, 1); }
-}
-/* 点击时弹出的提示气泡 */
-.mascot-bubble {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: #fff;
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--pink-dark);
-  white-space: nowrap;
-  box-shadow: var(--shadow);
-  animation: popIn 0.3s var(--bounce);
-  z-index: 2;
-  pointer-events: none;
-}
-.mascot-bubble::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 7px solid transparent;
-  border-top-color: var(--border);
-}
-
-/* 期待状态：悬停“我有票据要分享”按钮时触发 */
-.mascot.is-eager { animation: eagerHop 0.55s var(--bounce) infinite; }
-.mascot.is-eager .pupil { display: none; }
-.mascot.is-eager .star-eye { display: block; animation: starTwinkle 0.7s ease-in-out infinite alternate; }
-.mascot.is-eager .mouth-smile { display: none; }
-.mascot.is-eager .mouth-open { display: block; }
-.mascot.is-eager .paw-l { animation: waveL 0.5s ease-in-out infinite alternate; }
-.mascot.is-eager .paw-r { animation: waveR 0.5s ease-in-out 0.08s infinite alternate; }
-/* 期待/好奇时两侧迸出小星星 */
-.mascot-wrap::before, .mascot-wrap::after {
-  content: "✦";
-  position: absolute;
-  top: 6px;
-  font-size: 18px;
-  color: var(--sunny);
-  opacity: 0;
-  transform: scale(0.4);
-  transition: opacity 0.2s, transform 0.25s var(--bounce);
-  pointer-events: none;
-}
-.mascot-wrap::before { left: -26px; }
-.mascot-wrap::after { right: -26px; top: 22px; color: var(--pink); }
-.mascot-wrap:has(.is-eager)::before, .mascot-wrap:has(.is-eager)::after {
-  opacity: 1;
-  transform: scale(1);
-}
-/* 好奇状态：悬停“我想领点票据”按钮 —— 身体侧倾、耳朵竖起、袋里小袋鼠探头 */
-.mascot.is-curious { animation: curiousLean 1.3s ease-in-out infinite; }
-.mascot.is-curious .ear-l { transform: rotate(-26deg); }
-.mascot.is-curious .ear-r { transform: rotate(26deg); }
-.mascot.is-curious .joey { transform: translateY(-7px); }
-.mascot-wrap:has(.is-curious)::before, .mascot-wrap:has(.is-curious)::after {
-  opacity: 1;
-  transform: scale(1);
-  color: var(--teal);
-}
-@keyframes curiousLean {
-  0%, 100% { transform: translateX(0) rotate(0deg); }
-  50% { transform: translateX(6px) rotate(4deg); }
-}
-@keyframes eagerHop {
-  0%, 100% { transform: translateY(0) scale(1); }
-  40% { transform: translateY(-9px) scale(1.04); }
-}
-@keyframes waveL {
-  from { transform: translateY(-16px) rotate(-38deg); }
-  to { transform: translateY(-18px) rotate(-58deg); }
-}
-@keyframes waveR {
-  from { transform: translateY(-16px) rotate(38deg); }
-  to { transform: translateY(-18px) rotate(58deg); }
-}
-@keyframes starTwinkle {
-  from { opacity: 1; }
-  to { opacity: 0.55; }
-}
+.slogan { color: var(--muted); font-size: 16px; margin: 0 0 44px; }
 
 /* 漂浮装饰 */
 .hero::before, .hero::after {
@@ -884,9 +763,6 @@ body {
   .big-btn { padding: 32px 18px; }
   .hero { padding: 40px 0 20px; }
   .hero h1 { font-size: 31px; letter-spacing: 2px; }
-  .mascot { width: 96px; }
-  .mascot-wrap::before { left: -20px; }
-  .mascot-wrap::after { right: -20px; }
   .field-row { flex-direction: column; gap: 16px; }
   .filter-actions { margin-left: 0; width: 100%; }
   .filter-actions .primary-btn, .filter-actions .ghost-btn { flex: 1; }
