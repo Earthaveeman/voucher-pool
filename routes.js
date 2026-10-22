@@ -10,6 +10,7 @@ const router = express.Router();
 
 const INVOICE_TYPES = ['餐饮', '汽油', '通信', '其他'];
 const MAX_CLAIM_COUNT = 10;
+const MAX_MATCH_AMOUNT = 1000;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FILE_TYPES = new Map([
@@ -155,7 +156,7 @@ router.post('/invoices', upload.single('file'), (req, res, next) => {
 
 // ---------- 元信息：类型清单等由服务端统一下发，避免前后端双份维护 ----------
 router.get('/meta', (_req, res) => {
-  res.json({ invoice_types: INVOICE_TYPES, max_claim_count: MAX_CLAIM_COUNT });
+  res.json({ invoice_types: INVOICE_TYPES, max_claim_count: MAX_CLAIM_COUNT, max_match_amount: MAX_MATCH_AMOUNT });
 });
 
 // ---------- 2. 检索 ----------
@@ -232,6 +233,7 @@ router.get('/invoices/recommend', (req, res, next) => {
   try {
     const target = Number(req.query.amount);
     if (!Number.isFinite(target) || target <= 0) throw new HttpError(400, '想要的金额要填对哦，大于 0 才行');
+    if (target > MAX_MATCH_AMOUNT) throw new HttpError(400, `智能匹配的金额最大允许为${MAX_MATCH_AMOUNT}`);
     // 支持多选：invoice_type 参数可重复出现，一个都不传即不限类型
     const types = (Array.isArray(req.query.invoice_type) ? req.query.invoice_type : [req.query.invoice_type]).filter(Boolean);
     for (const t of types) {

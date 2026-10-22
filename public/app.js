@@ -6,6 +6,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // 兜底清单：启动后优先从 /api/meta 拉取服务端配置，失败时沿用
 let TYPES = ['餐饮', '汽油', '通信', '其他'];
 let MAX_CLAIM = 10;
+let MAX_MATCH = 1000; // 智能匹配金额上限
 
 /* ---------- 初始化下拉框 ---------- */
 function fillSelect(sel, allLabel) {
@@ -108,6 +109,10 @@ async function initMeta() {
     }
     if (Number.isInteger(meta.max_claim_count) && meta.max_claim_count > 0) {
       MAX_CLAIM = meta.max_claim_count;
+    }
+    if (Number.isFinite(meta.max_match_amount) && meta.max_match_amount > 0) {
+      MAX_MATCH = meta.max_match_amount;
+      updateNeedAmountNote();
     }
   } catch {
     // 拉取失败时沿用兜底清单
@@ -485,6 +490,10 @@ async function runRecommend() {
     flagInvalid($('#needAmount'));
     return toast('想要的金额要填对哦，大于 0 才行', 'err');
   }
+  if (amount > MAX_MATCH) {
+    flagInvalid($('#needAmount'));
+    return toast(`智能匹配的金额最大允许为${MAX_MATCH}`, 'err');
+  }
   const btn = $('#matchBtn');
   btn.disabled = true;
   btn.classList.add('is-loading');
@@ -664,7 +673,18 @@ function invalidateRecommend() {
   recItems = [];
   $('#recommendResult').hidden = true;
 }
-$('#needAmount').addEventListener('input', invalidateRecommend);
+// 金额标签小注：平时是「（最多 1000）」，超过上限时原地切换为警告文案
+function updateNeedAmountNote() {
+  const amount = Number($('#needAmount').value);
+  const over = Number.isFinite(amount) && amount > MAX_MATCH;
+  const note = $('#needAmountCap');
+  note.classList.toggle('is-warn', over);
+  note.textContent = over ? `智能匹配的金额最大允许为${MAX_MATCH}` : `（最多 ${MAX_MATCH}）`;
+}
+$('#needAmount').addEventListener('input', () => {
+  invalidateRecommend();
+  updateNeedAmountNote();
+});
 $('#needType').addEventListener('change', invalidateRecommend);
 $('#claimRecommendBtn').addEventListener('click', () => {
   const ids = recItems.filter((i) => i.checked).map((i) => i.id);

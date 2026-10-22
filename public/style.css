@@ -508,6 +508,9 @@ body {
 .range { display: flex; align-items: center; gap: 8px; }
 .range span { color: var(--muted); font-weight: 700; }
 .filter-actions { display: flex; gap: 10px; margin-left: auto; align-items: stretch; }
+/* 智能匹配金额上限：标签内括号小注，超限时原地变为警告色 */
+#needAmountCap { transition: color 0.2s; }
+#needAmountCap.is-warn { color: #96700a; }
 
 /* ===== 票据卡片列表 ===== */
 .card-list {

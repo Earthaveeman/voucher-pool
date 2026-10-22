@@ -133,8 +133,8 @@
       <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend" hidden>
         <div class="card filter-card">
           <label class="field inline">
-            <span class="field-label">想要的金额 <em>*</em></span>
-            <input type="number" id="needAmount" min="0.01" step="0.01" placeholder="比如 5000" />
+            <span class="field-label">想要的金额 <span id="needAmountCap">（最多 1000）</span> <em>*</em></span>
+            <input type="number" id="needAmount" min="0.01" max="1000" step="0.01" placeholder="比如 500" aria-describedby="needAmountCap" />
           </label>
           <div class="field inline">
             <span class="field-label">票据类型（可多选）</span>
