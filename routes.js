@@ -89,30 +89,58 @@ function money(n) {
 
 function buildClaimEmailHtml(rows, total) {
   const trs = rows.map((r, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${money(r.amount)}</td>
-      <td>${esc(r.invoice_type)}</td>
-      <td>${esc(r.invoice_month)}</td>
-      <td>${esc(r.remark || '—')}</td>
-      <td>${esc(r.uploader_name || '—')}</td>
-      <td>${esc(r.uploader_contact || '—')}</td>
+    <tr style="background:${i % 2 ? '#fff7ee' : '#ffffff'};">
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf; color:#a292b8;">${i + 1}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf; font-weight:700; color:#f0457e;">${money(r.amount)}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf;">${esc(r.invoice_type)}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf;">${esc(r.invoice_month)}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf;">${esc(r.remark || '—')}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf;">${esc(r.uploader_name || '—')}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #f3e2cf;">${esc(r.uploader_contact || '—')}</td>
     </tr>`).join('');
   return `
-    <div style="font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif; max-width: 640px;">
-      <h3>您抱走的 ${rows.length} 张票据到啦～</h3>
-      <p>附件共 ${rows.length} 个文件都打包好了，票据明细如下：</p>
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; font-size: 14px;">
-        <tr style="background:#f5f5f5;">
-          <th>序号</th><th>金额</th><th>类型</th><th>开票年月</th><th>备注</th><th>分享人</th><th>联系方式</th>
-        </tr>
-        ${trs}
-        <tr style="font-weight:bold;">
-          <td>合计</td><td>${money(total)}</td><td colspan="5"></td>
-        </tr>
-      </table>
-      <p style="color:#888;font-size:12px;">这封邮件是票据分享池偷偷派来的小信使哦～</p>
-    </div>`;
+  <div style="background:#fff7ee; padding:32px 16px; font-family:-apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif; color:#4a3f55;">
+    <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:18px; overflow:hidden; box-shadow:0 4px 16px rgba(74,63,85,0.08);">
+
+      <div style="background:#ff6b9d; background:linear-gradient(120deg, #ff6b9d, #9775fa); padding:32px 32px 28px; text-align:center;">
+        <div style="font-size:44px; line-height:1;">💌</div>
+        <h1 style="margin:14px 0 6px; font-size:24px; color:#ffffff; letter-spacing:1px;">您抱走的 ${rows.length} 张票据到啦～</h1>
+        <p style="margin:0; font-size:14px; color:#ffe3ee;">票据分享池 · 小信鸽加急派送</p>
+      </div>
+
+      <div style="padding:28px 32px;">
+        <p style="margin:0 0 18px; font-size:15px; line-height:1.8;">
+          嗨～${rows.length} 个票据文件已经整整齐齐地躺在附件里啦，明细清单请过目：
+        </p>
+
+        <table cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:14px; border:1px solid #f3e2cf; border-radius:12px; overflow:hidden;">
+          <tr style="background:#12b8a6;">
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">序号</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">金额</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">类型</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">开票年月</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">备注</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">分享人</th>
+            <th style="padding:10px 12px; color:#ffffff; font-weight:600; text-align:left;">联系方式</th>
+          </tr>
+          ${trs}
+        </table>
+
+        <div style="margin-top:18px; padding:14px 18px; background:#fff3bf; border-radius:12px; font-size:15px;">
+          🧾 合计金额：<b style="color:#f0457e; font-size:18px;">${money(total)}</b>
+        </div>
+
+        <p style="margin:20px 0 0; font-size:13px; line-height:1.8; color:#a292b8;">
+          小约定：如果这些票据后来用不上，欢迎再分享回池子里，让它们继续帮助下一位小伙伴呀～
+        </p>
+      </div>
+
+      <div style="padding:16px 32px 24px; border-top:1px dashed #f3e2cf; text-align:center; font-size:12px; color:#a292b8;">
+        这封邮件是票据分享池派出的小信使 🕊️ 祝您报销顺利，天天开心～
+      </div>
+
+    </div>
+  </div>`;
 }
 
 const byDateAsc = (a, b) =>
