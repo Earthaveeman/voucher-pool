@@ -222,13 +222,34 @@ const SHARE_SUCCESS_MESSAGES = [
   '圆满～这张票据找到新家啦～'
 ];
 
+// 文案池：邮件发送成功，俏皮可爱风，每次随机挑一条
+const CLAIM_SUCCESS_MESSAGES = [
+  '寄出去咯，记得查收～',
+  '小信鸽扑棱着翅膀出发啦～',
+  '票据坐上邮件快车咯～',
+  '嗖～包裹正飞向你的邮箱～',
+  '投递成功，收件箱里见～',
+  '邮件小火箭发射成功～',
+  '包裹已发出，请可爱地等待～',
+  '票据打包完毕，飞奔而去咯～',
+  '叮咚～好运正在派送途中～',
+  '寄件成功，这波稳了～'
+];
+
 const CONFETTI_COLORS = ['#ff6b9d', '#12b8a6', '#ffd43b', '#9775fa', '#ff8787', '#74c0fc'];
 let celebrateTimer = null;
 
-function showShareCelebrate() {
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function showCelebrate({ emoji = '🎉', text, sub = '' }) {
   const el = $('#shareCelebrate');
-  const msg = SHARE_SUCCESS_MESSAGES[Math.floor(Math.random() * SHARE_SUCCESS_MESSAGES.length)];
-  el.querySelector('.celebrate-text').textContent = msg;
+  el.querySelector('.celebrate-emoji').textContent = emoji;
+  el.querySelector('.celebrate-text').textContent = text;
+  const subEl = el.querySelector('.celebrate-sub');
+  subEl.textContent = sub;
+  subEl.hidden = !sub;
 
   // 生成五彩纸屑
   const box = el.querySelector('.celebrate-confetti');
@@ -255,6 +276,10 @@ function showShareCelebrate() {
     el.classList.add('is-leaving');
     setTimeout(() => { el.hidden = true; el.classList.remove('is-leaving'); }, 300);
   }, 3800);
+}
+
+function showShareCelebrate() {
+  showCelebrate({ emoji: '🎉', text: pickRandom(SHARE_SUCCESS_MESSAGES) });
 }
 
 // 表单校验失败：抖动提示 + 聚焦
@@ -631,7 +656,12 @@ $('#claimConfirm').addEventListener('click', async () => {
       body: JSON.stringify({ ids: claimIds, email }),
     });
     closeClaimModal();
-    toast(r.message);
+    const count = r.count || claimIds.length;
+    showCelebrate({
+      emoji: '💌',
+      text: pickRandom(CLAIM_SUCCESS_MESSAGES),
+      sub: `${count} 张票据正在扑向 ${email}，记得查收哦～`
+    });
     refreshCurrentPanel();
   } catch (err) {
     toast(err.message, 'err');

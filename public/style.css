@@ -732,6 +732,12 @@ body {
   background-clip: text;
   color: transparent;
 }
+.celebrate-sub {
+  margin: 0;
+  font-size: clamp(15px, 3vw, 18px);
+  font-weight: 600;
+  color: var(--muted);
+}
 
 
 /* ===== 无障碍：减少动态偏好 ===== */
