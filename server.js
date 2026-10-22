@@ -24,6 +24,8 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+// 老浏览器/工具仍按惯例请求 /favicon.ico，兜底指向站点图标
+app.get('/favicon.ico', (_req, res) => res.redirect('/favicon.png'));
 
 // ---------- 限流：单实例内存滑动窗口，按 IP 计数 ----------
 function createRateLimiter({ windowMs, max }) {
