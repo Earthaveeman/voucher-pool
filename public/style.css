@@ -134,22 +134,10 @@ body {
   cursor: pointer;
   animation: bob 4.2s ease-in-out infinite;
 }
-/* 地面柔影：弹跳时同步缩放 */
-.mascot .shadow { transform-box: fill-box; transform-origin: 50% 50%; }
-/* 瞳孔跟随：JS 以 rAF 更新位移（期待态放大），配合短过渡实现平滑追视 */
-.mascot .pupil {
-  transition: transform 0.12s ease-out;
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-}
-/* 头部协同转动：JS 以阻尼弹簧写入 CSS 变量，绕颈部自然转动 */
-.mascot .head {
-  transform-box: view-box;
-  transform-origin: 62px 62px;
-  transform: translate(var(--head-x, 0px), var(--head-y, 0px)) rotate(var(--head-rot, 0deg));
-}
-/* 可切换部件默认隐藏：加深微笑、张嘴、生气眉、失落眼皮、泪珠 */
-.mascot .mouth-smile-big, .mascot .mouth-open,
+/* 瞳孔跟随：JS 以 rAF 更新位移，配合短过渡实现平滑追视 */
+.mascot .pupil { transition: transform 0.12s ease-out; }
+/* 可切换部件默认隐藏：星星眼、张嘴、生气眉、失落眼皮、泪珠 */
+.mascot .star-eye, .mascot .mouth-open,
 .mascot .brow, .mascot .eyelid, .mascot .tear { display: none; }
 /* 部件变换基准 */
 .mascot .paw { transform-box: fill-box; transform-origin: 50% 85%; }
@@ -176,16 +164,14 @@ body {
 }
 
 /* ===== 情绪状态（互斥，JS data-state 驱动） ===== */
-/* 期待（含蓄版）：加深微笑 + 瞳孔放大（JS 合成 scale）+ 单次轻微前倾踮脚 + 耳朵微竖 */
-.mascot[data-state="eager"] {
-  animation: none;
-  transform: translateY(-3px) rotate(-2deg);
-  transition: transform 0.45s var(--bounce);
-}
+/* 期待：星星眼 + 张嘴 + 挥手 + 蹦跳 */
+.mascot[data-state="eager"] { animation: eagerHop 0.55s var(--bounce) infinite; }
+.mascot[data-state="eager"] .pupil { display: none; }
+.mascot[data-state="eager"] .star-eye { display: block; animation: starTwinkle 0.7s ease-in-out infinite alternate; }
 .mascot[data-state="eager"] .mouth-smile { display: none; }
-.mascot[data-state="eager"] .mouth-smile-big { display: block; }
-.mascot[data-state="eager"] .ear-l { --ear-rot: -24deg; }
-.mascot[data-state="eager"] .ear-r { --ear-rot: 24deg; }
+.mascot[data-state="eager"] .mouth-open { display: block; }
+.mascot[data-state="eager"] .paw-l { animation: waveL 0.5s ease-in-out infinite alternate; }
+.mascot[data-state="eager"] .paw-r { animation: waveR 0.5s ease-in-out 0.08s infinite alternate; }
 
 /* 好奇：侧身 + 竖耳 + 小袋鼠探头 */
 .mascot[data-state="curious"] { animation: curiousLean 1.3s ease-in-out infinite; }
@@ -222,13 +208,8 @@ body {
 /* 小袋鼠探头张望 */
 .mascot .joey.is-peek { transform: translateY(-7px); }
 
-/* 点击袋鼠：压缩-弹跳反馈（置于状态规则之后，动画属性优先级最高），地面柔影同步收缩 */
+/* 点击袋鼠：压缩-弹跳反馈（置于状态规则之后，动画属性优先级最高） */
 .mascot.is-boing { animation: boing 0.6s var(--bounce); }
-.mascot.is-boing .shadow { animation: shadowPulse 0.6s var(--bounce); }
-@keyframes shadowPulse {
-  0%, 100% { transform: scaleX(1); opacity: 0.22; }
-  48% { transform: scaleX(0.78); opacity: 0.14; }
-}
 
 /* 点击/生气时弹出的提示气泡 */
 .mascot-bubble {
@@ -306,6 +287,22 @@ body {
   0% { opacity: 0; transform: translateY(0) scale(0.6); }
   25% { opacity: 1; transform: translateY(2px) scale(1); }
   100% { opacity: 0; transform: translateY(14px) scale(1); }
+}
+@keyframes eagerHop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-9px) scale(1.04); }
+}
+@keyframes waveL {
+  from { transform: translateY(-16px) rotate(-38deg); }
+  to { transform: translateY(-18px) rotate(-58deg); }
+}
+@keyframes waveR {
+  from { transform: translateY(-16px) rotate(38deg); }
+  to { transform: translateY(-18px) rotate(58deg); }
+}
+@keyframes starTwinkle {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
 }
 @keyframes boing {
   0% { transform: scale(1, 1); }
