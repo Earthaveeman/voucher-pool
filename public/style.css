@@ -133,30 +133,85 @@ body {
   height: auto;
   cursor: pointer;
   animation: bob 4.2s ease-in-out infinite;
-  transition: transform 0.25s var(--bounce);
 }
 /* 瞳孔跟随：JS 以 rAF 更新位移，配合短过渡实现平滑追视 */
 .mascot .pupil { transition: transform 0.12s ease-out; }
-/* 星星眼与张嘴默认隐藏 */
-.mascot .star-eye, .mascot .mouth-open { display: none; }
+/* 可切换部件默认隐藏：星星眼、张嘴、生气眉、失落眼皮、泪珠 */
+.mascot .star-eye, .mascot .mouth-open,
+.mascot .brow, .mascot .eyelid, .mascot .tear { display: none; }
+/* 部件变换基准 */
 .mascot .paw { transform-box: fill-box; transform-origin: 50% 85%; }
-/* 长耳朵：默认微微外八，竖起时绕耳根旋转 */
-.mascot .ear { transform-box: fill-box; transform-origin: 50% 88%; transition: transform 0.25s var(--bounce); }
-.mascot .ear-l { transform: rotate(-14deg); }
-.mascot .ear-r { transform: rotate(14deg); }
-/* 袋里小袋鼠：探头时整体上移 */
-.mascot .joey { transition: transform 0.3s var(--bounce); }
-
-/* 点击袋鼠：压缩-弹跳反馈（boing） */
-.mascot.is-boing { animation: boing 0.6s var(--bounce); }
-@keyframes boing {
-  0% { transform: scale(1, 1); }
-  25% { transform: scale(1.12, 0.84); }
-  48% { transform: scale(0.94, 1.08) translateY(-18px); }
-  70% { transform: scale(1.05, 0.92) translateY(0); }
-  100% { transform: scale(1, 1); }
+.mascot .eye { transform-box: fill-box; transform-origin: 50% 50%; }
+/* 耳朵旋转角走 --ear-rot 变量，各状态只改变量，抖耳关键帧也复用它 */
+.mascot .ear {
+  transform-box: fill-box;
+  transform-origin: 50% 88%;
+  transition: transform 0.25s var(--bounce);
+  transform: rotate(var(--ear-rot, 0deg));
 }
-/* 点击时弹出的提示气泡 */
+.mascot .ear-l { --ear-rot: -14deg; }
+.mascot .ear-r { --ear-rot: 14deg; }
+.mascot .joey { transition: transform 0.3s var(--bounce); }
+/* 尾巴待机轻摆 */
+.mascot .tail {
+  transform-box: fill-box;
+  transform-origin: 12% 14%;
+  animation: tailSway 5s ease-in-out infinite;
+}
+@keyframes tailSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+
+/* ===== 情绪状态（互斥，JS data-state 驱动） ===== */
+/* 期待：星星眼 + 张嘴 + 挥手 + 蹦跳 */
+.mascot[data-state="eager"] { animation: eagerHop 0.55s var(--bounce) infinite; }
+.mascot[data-state="eager"] .pupil { display: none; }
+.mascot[data-state="eager"] .star-eye { display: block; animation: starTwinkle 0.7s ease-in-out infinite alternate; }
+.mascot[data-state="eager"] .mouth-smile { display: none; }
+.mascot[data-state="eager"] .mouth-open { display: block; }
+.mascot[data-state="eager"] .paw-l { animation: waveL 0.5s ease-in-out infinite alternate; }
+.mascot[data-state="eager"] .paw-r { animation: waveR 0.5s ease-in-out 0.08s infinite alternate; }
+
+/* 好奇：侧身 + 竖耳 + 小袋鼠探头 */
+.mascot[data-state="curious"] { animation: curiousLean 1.3s ease-in-out infinite; }
+.mascot[data-state="curious"] .ear-l { --ear-rot: -26deg; }
+.mascot[data-state="curious"] .ear-r { --ear-rot: 26deg; }
+.mascot[data-state="curious"] .joey { transform: translateY(-7px); }
+
+/* 失落：耳朵耷拉 + 眼皮下垂 + 泪珠滑落 + 身体下沉 */
+.mascot[data-state="sad"] { animation: sadSag 2.5s ease-in-out both; }
+.mascot[data-state="sad"] .ear-l { --ear-rot: -34deg; }
+.mascot[data-state="sad"] .ear-r { --ear-rot: 34deg; }
+.mascot[data-state="sad"] .eyelid { display: block; animation: lidDroop 0.4s ease-out both; }
+.mascot[data-state="sad"] .tear { display: block; animation: tearDrop 1.4s ease-in 0.3s 2; }
+
+/* 生气：皱眉 + 张嘴 + 横向跺脚抖动 */
+.mascot[data-state="angry"] { animation: shake 0.3s linear infinite; }
+.mascot[data-state="angry"] .brow { display: block; }
+.mascot[data-state="angry"] .mouth-smile { display: none; }
+.mascot[data-state="angry"] .mouth-open { display: block; }
+
+/* ===== 一次性微动作（叠加类，不改状态归属） ===== */
+/* 眨眼：眼睛组瞬间压扁 */
+.mascot.is-blinking .eye { animation: blink 0.15s ease-out; }
+@keyframes blink {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.08); }
+}
+/* 抖耳：绕耳根小幅回弹 */
+.mascot .ear.is-twitch { animation: earTwitch 0.4s var(--bounce); }
+@keyframes earTwitch {
+  0%, 100% { transform: rotate(var(--ear-rot, 0deg)); }
+  40% { transform: rotate(calc(var(--ear-rot, 0deg) - 14deg)); }
+}
+/* 小袋鼠探头张望 */
+.mascot .joey.is-peek { transform: translateY(-7px); }
+
+/* 点击袋鼠：压缩-弹跳反馈（置于状态规则之后，动画属性优先级最高） */
+.mascot.is-boing { animation: boing 0.6s var(--bounce); }
+
+/* 点击/生气时弹出的提示气泡 */
 .mascot-bubble {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -184,16 +239,14 @@ body {
   border: 7px solid transparent;
   border-top-color: var(--border);
 }
+.mascot-bubble.is-grumpy {
+  background: #fff5f2;
+  border-color: #ffc9bb;
+  color: #e8590c;
+}
+.mascot-bubble.is-grumpy::after { border-top-color: #ffc9bb; }
 
-/* 期待状态：悬停“我有票据要分享”按钮时触发 */
-.mascot.is-eager { animation: eagerHop 0.55s var(--bounce) infinite; }
-.mascot.is-eager .pupil { display: none; }
-.mascot.is-eager .star-eye { display: block; animation: starTwinkle 0.7s ease-in-out infinite alternate; }
-.mascot.is-eager .mouth-smile { display: none; }
-.mascot.is-eager .mouth-open { display: block; }
-.mascot.is-eager .paw-l { animation: waveL 0.5s ease-in-out infinite alternate; }
-.mascot.is-eager .paw-r { animation: waveR 0.5s ease-in-out 0.08s infinite alternate; }
-/* 期待/好奇时两侧迸出小星星 */
+/* 情绪氛围星星：期待=暖黄 / 好奇=薄荷绿 / 失落=灰紫 / 生气=红 */
 .mascot-wrap::before, .mascot-wrap::after {
   content: "✦";
   position: absolute;
@@ -207,23 +260,33 @@ body {
 }
 .mascot-wrap::before { left: -26px; }
 .mascot-wrap::after { right: -26px; top: 22px; color: var(--pink); }
-.mascot-wrap:has(.is-eager)::before, .mascot-wrap:has(.is-eager)::after {
+.mascot-wrap:has([data-state="eager"])::before, .mascot-wrap:has([data-state="eager"])::after,
+.mascot-wrap:has([data-state="curious"])::before, .mascot-wrap:has([data-state="curious"])::after,
+.mascot-wrap:has([data-state="sad"])::before, .mascot-wrap:has([data-state="sad"])::after,
+.mascot-wrap:has([data-state="angry"])::before, .mascot-wrap:has([data-state="angry"])::after {
   opacity: 1;
   transform: scale(1);
 }
-/* 好奇状态：悬停“我想领点票据”按钮 —— 身体侧倾、耳朵竖起、袋里小袋鼠探头 */
-.mascot.is-curious { animation: curiousLean 1.3s ease-in-out infinite; }
-.mascot.is-curious .ear-l { transform: rotate(-26deg); }
-.mascot.is-curious .ear-r { transform: rotate(26deg); }
-.mascot.is-curious .joey { transform: translateY(-7px); }
-.mascot-wrap:has(.is-curious)::before, .mascot-wrap:has(.is-curious)::after {
-  opacity: 1;
-  transform: scale(1);
-  color: var(--teal);
-}
+.mascot-wrap:has([data-state="curious"])::before, .mascot-wrap:has([data-state="curious"])::after { color: var(--teal); }
+.mascot-wrap:has([data-state="sad"])::before, .mascot-wrap:has([data-state="sad"])::after { color: var(--muted); }
+.mascot-wrap:has([data-state="angry"])::before, .mascot-wrap:has([data-state="angry"])::after { color: var(--danger); }
+
 @keyframes curiousLean {
   0%, 100% { transform: translateX(0) rotate(0deg); }
   50% { transform: translateX(6px) rotate(4deg); }
+}
+@keyframes sadSag {
+  0% { transform: translateY(0); }
+  30%, 100% { transform: translateY(3px); }
+}
+@keyframes lidDroop {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
+}
+@keyframes tearDrop {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  25% { opacity: 1; transform: translateY(2px) scale(1); }
+  100% { opacity: 0; transform: translateY(14px) scale(1); }
 }
 @keyframes eagerHop {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -240,6 +303,13 @@ body {
 @keyframes starTwinkle {
   from { opacity: 1; }
   to { opacity: 0.55; }
+}
+@keyframes boing {
+  0% { transform: scale(1, 1); }
+  25% { transform: scale(1.12, 0.84); }
+  48% { transform: scale(0.94, 1.08) translateY(-18px); }
+  70% { transform: scale(1.05, 0.92) translateY(0); }
+  100% { transform: scale(1, 1); }
 }
 
 /* 漂浮装饰 */

@@ -763,20 +763,62 @@ $('#resetBtn').addEventListener('click', () => {
 });
 
 /* ---------- 首页袋鼠吉祥物 ---------- */
-// 瞳孔实时跟随鼠标：mousemove 记录光标坐标，rAF 节流后按“眼睛中心→光标”方向
-// 计算单位向量位移，距离越近偏移越小、远处封顶在 MAX_SHIFT，配合 CSS 短过渡实现平滑追视
+// 情绪状态机：持久状态走 data-state（idle/eager/curious/sad/angry），由 setState 单入口切换；
+// 一次性动作（点击弹跳 is-boing、眨眼 is-blinking、抖耳 is-twitch、小袋鼠探头 is-peek）
+// 用叠加 class，不改状态归属，避免多个 animation 属性互相覆盖
 (function initMascot() {
   const mascot = $('#mascot');
   if (!mascot) return;
+
+  const STATE = { IDLE: 'idle', EAGER: 'eager', CURIOUS: 'curious', SAD: 'sad', ANGRY: 'angry' };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const canHover = window.matchMedia('(hover: hover)').matches;
+  mascot.dataset.state = STATE.IDLE;
+
+  /* --- 气泡文案分组 --- */
+  const GREETINGS = [
+    '嘿！我是池子小管家～',
+    '袋鼠式点赞，棒！',
+    '票据跳进口袋咯～',
+    '蹦蹦跳跳去分享！',
+    '今天也要帮小伙伴呀～',
+  ];
+  const COMPLAINTS = [
+    '别戳啦！袋子要破咯～',
+    '再戳真的要生气啦！',
+    '停停停！尾巴都被戳歪了！',
+  ];
+  const bubble = $('#mascotBubble');
+  let bubbleTimer = 0;
+  function showBubble(text, grumpy) {
+    if (!bubble) return;
+    bubble.textContent = text;
+    bubble.classList.toggle('is-grumpy', !!grumpy);
+    bubble.hidden = false;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { bubble.hidden = true; }, 1600);
+  }
+
+  /* --- 状态机单入口：离开 sad/angry 时统一清理其自动恢复定时器 --- */
+  let sadTimer = 0;
+  let angryTimer = 0;
+  let cooldownUntil = 0; // 生气冷却截止时间，期间忽略失落/生气彩蛋
+  function setState(next) {
+    const cur = mascot.dataset.state;
+    if (cur === STATE.SAD && next !== STATE.SAD) clearTimeout(sadTimer);
+    if (cur === STATE.ANGRY && next !== STATE.ANGRY) clearTimeout(angryTimer);
+    mascot.dataset.state = next;
+  }
+
+  /* --- 瞳孔实时跟随鼠标 --- */
   const pupils = [...mascot.querySelectorAll('.pupil')];
   const MAX_SHIFT = 4.2; // 瞳孔最大偏移（SVG 单位）
   let rafId = 0;
   let cursorX = 0;
   let cursorY = 0;
-
   function updatePupils() {
     rafId = 0;
-    if (mascot.classList.contains('is-eager')) return; // 星星眼状态下无需追视
+    if (mascot.dataset.state === STATE.EAGER) return; // 星星眼状态下无需追视
     for (const p of pupils) {
       const eye = p.closest('.eye').getBoundingClientRect();
       const cx = eye.left + eye.width / 2;
@@ -784,61 +826,124 @@ $('#resetBtn').addEventListener('click', () => {
       const dx = cursorX - cx;
       const dy = cursorY - cy;
       const dist = Math.hypot(dx, dy) || 1;
-      const k = Math.min(dist / 30, 1) * MAX_SHIFT;
+      const k = Math.min(dist / 30, 1) * MAX_SHIFT; // 近处小动、远处封顶
       p.style.transform = `translate(${(dx / dist) * k}px, ${(dy / dist) * k}px)`;
     }
   }
-
   document.addEventListener('mousemove', (e) => {
     cursorX = e.clientX;
     cursorY = e.clientY;
     if (!rafId) rafId = requestAnimationFrame(updatePupils);
   }, { passive: true });
 
-  // 悬停/键盘聚焦“我有票据要分享”按钮 → 期待表情（星星眼、张嘴、挥手、蹦跳）；
-  // 移开/失焦即移除 is-eager，表情与瞳孔追视同步恢复
-  const shareBtn = $('#goShareBtn');
-  if (shareBtn) {
-    const setEager = (on) => mascot.classList.toggle('is-eager', on);
-    shareBtn.addEventListener('mouseenter', () => setEager(true));
-    shareBtn.addEventListener('mouseleave', () => setEager(false));
-    shareBtn.addEventListener('focus', () => setEager(true));
-    shareBtn.addEventListener('blur', () => setEager(false));
+  /* --- 悬停/键盘聚焦大按钮 → 期待 / 好奇（优先级高于失落） --- */
+  function bindHoverState(btn, state) {
+    if (!btn) return;
+    const enter = () => { if (mascot.dataset.state !== STATE.ANGRY) setState(state); };
+    const leave = () => { if (mascot.dataset.state === state) setState(STATE.IDLE); };
+    btn.addEventListener('mouseenter', enter);
+    btn.addEventListener('mouseleave', leave);
+    btn.addEventListener('focus', enter);
+    btn.addEventListener('blur', leave);
+  }
+  bindHoverState($('#goShareBtn'), STATE.EAGER);
+  bindHoverState($('#goNeedBtn'), STATE.CURIOUS);
+
+  /* --- 彩蛋 1：鼠标离开窗口 → 失落 2.5 秒后自动恢复（触屏设备跳过） --- */
+  if (canHover) {
+    document.addEventListener('mouseout', (e) => {
+      if (e.relatedTarget) return; // 仍在页面内
+      if (Date.now() < cooldownUntil) return;
+      const s = mascot.dataset.state;
+      if (s !== STATE.IDLE && s !== STATE.EAGER && s !== STATE.CURIOUS) return;
+      setState(STATE.SAD);
+      sadTimer = setTimeout(() => {
+        if (mascot.dataset.state === STATE.SAD) setState(STATE.IDLE);
+      }, 2500);
+    });
   }
 
-  // 悬停/键盘聚焦“我想领点票据”按钮 → 好奇状态（身体侧倾、耳朵竖起、袋里小袋鼠探头）；
-  // 移开/失焦即移除 is-curious 恢复常态
-  const needBtn = $('#goNeedBtn');
-  if (needBtn) {
-    const setCurious = (on) => mascot.classList.toggle('is-curious', on);
-    needBtn.addEventListener('mouseenter', () => setCurious(true));
-    needBtn.addEventListener('mouseleave', () => setCurious(false));
-    needBtn.addEventListener('focus', () => setCurious(true));
-    needBtn.addEventListener('blur', () => setCurious(false));
-  }
-
-  // 点击袋鼠：压缩-弹跳反馈 + 随机提示气泡；触屏点按同样触发（click 事件兼容）
-  const bubble = $('#mascotBubble');
-  const PHRASES = [
-    '嘿！我是池子小管家～',
-    '袋鼠式点赞，棒！',
-    '票据跳进口袋咯～',
-    '蹦蹦跳跳去分享！',
-    '今天也要帮小伙伴呀～',
-  ];
+  /* --- 点击：弹跳 + 问候；1.5 秒内连点 ≥4 次 → 生气 2 秒（随后冷却 8 秒） --- */
+  let clickTimes = [];
   let boingTimer = 0;
-  let bubbleTimer = 0;
+  function enterAngry() {
+    setState(STATE.ANGRY);
+    showBubble(COMPLAINTS[Math.floor(Math.random() * COMPLAINTS.length)], true);
+    angryTimer = setTimeout(() => {
+      if (mascot.dataset.state === STATE.ANGRY) setState(STATE.IDLE);
+      cooldownUntil = Date.now() + 8000;
+    }, 2000);
+  }
   mascot.addEventListener('click', () => {
+    const now = Date.now();
+    if (mascot.dataset.state === STATE.ANGRY) {
+      showBubble(COMPLAINTS[Math.floor(Math.random() * COMPLAINTS.length)], true);
+      return;
+    }
+    clickTimes = clickTimes.filter((t) => now - t < 1500); // 滑动窗口计数
+    clickTimes.push(now);
+    if (clickTimes.length >= 4 && now >= cooldownUntil) {
+      clickTimes = [];
+      enterAngry();
+      return;
+    }
     mascot.classList.remove('is-boing');
     void mascot.getBoundingClientRect(); // 强制回流，连续点击可重启动画
     mascot.classList.add('is-boing');
     clearTimeout(boingTimer);
     boingTimer = setTimeout(() => mascot.classList.remove('is-boing'), 620);
-    if (bubble) {
-      bubble.textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)];
-      bubble.hidden = false;
-      clearTimeout(bubbleTimer);
-      bubbleTimer = setTimeout(() => { bubble.hidden = true; }, 1600);
+    showBubble(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
+  });
+
+  /* --- 待机随机微动作：眨眼 / 抖耳 / 小袋鼠探头（触屏与减少动态模式下不调度） --- */
+  let idleTimer = 0;
+  let blinkTimer = 0;
+  let peekTimer = 0;
+  function playIdleMicro() {
+    if (reducedMotion.matches || !canHover) return;
+    if (mascot.dataset.state !== STATE.IDLE || mascot.classList.contains('is-boing')) return;
+    const roll = Math.random();
+    if (roll < 0.5) {
+      // 眨眼（概率最高）
+      mascot.classList.add('is-blinking');
+      clearTimeout(blinkTimer);
+      blinkTimer = setTimeout(() => mascot.classList.remove('is-blinking'), 200);
+    } else if (roll < 0.8) {
+      // 随机抖一只耳朵
+      const ear = mascot.querySelector(Math.random() < 0.5 ? '.ear-l' : '.ear-r');
+      ear.classList.add('is-twitch');
+      ear.addEventListener('animationend', () => ear.classList.remove('is-twitch'), { once: true });
+    } else {
+      // 小袋鼠探头张望
+      const joey = mascot.querySelector('.joey');
+      if (joey) {
+        joey.classList.add('is-peek');
+        clearTimeout(peekTimer);
+        peekTimer = setTimeout(() => joey.classList.remove('is-peek'), 900);
+      }
+    }
+  }
+  function scheduleIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      playIdleMicro();
+      scheduleIdle();
+    }, 3000 + Math.random() * 3000);
+  }
+  if (canHover && !reducedMotion.matches) scheduleIdle();
+
+  /* --- 页面失焦时集中清理定时器，回来后复位并重新调度 --- */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      [idleTimer, blinkTimer, peekTimer, boingTimer, bubbleTimer, sadTimer, angryTimer].forEach(clearTimeout);
+      mascot.classList.remove('is-blinking', 'is-boing');
+      const joey = mascot.querySelector('.joey');
+      const ear = mascot.querySelector('.ear.is-twitch');
+      if (joey) joey.classList.remove('is-peek');
+      if (ear) ear.classList.remove('is-twitch');
+    } else {
+      if (mascot.dataset.state !== STATE.ANGRY) setState(STATE.IDLE);
+      if (canHover && !reducedMotion.matches) scheduleIdle();
     }
   });
 })();

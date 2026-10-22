@@ -25,65 +25,102 @@
         <p class="slogan">闲置票据别睡大觉，分享给需要的小伙伴，一键打包飞进邮箱～</p>
         <div class="mascot-wrap">
           <div class="mascot-bubble" id="mascotBubble" role="status" hidden></div>
-          <svg id="mascot" class="mascot" viewBox="0 0 140 132" role="img" aria-label="袋鼠吉祥物，点一下会跳起来打招呼">
-            <!-- 粗尾巴（向后撑地） -->
-            <path d="M88 92 Q118 100 126 122" stroke="#f0a55c" stroke-width="11" stroke-linecap="round" fill="none" />
+          <svg id="mascot" class="mascot" viewBox="0 0 140 138" role="img" data-state="idle"
+            aria-label="袋鼠吉祥物，会盯着鼠标看，点它会跳起来打招呼">
+            <defs>
+              <linearGradient id="kgBody" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#f7b56a" />
+                <stop offset="1" stop-color="#e8924e" />
+              </linearGradient>
+              <linearGradient id="kgBelly" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fff4e2" />
+                <stop offset="1" stop-color="#ffe3c2" />
+              </linearGradient>
+              <linearGradient id="kgInnerEar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffd3e3" />
+                <stop offset="1" stop-color="#ffb3cf" />
+              </linearGradient>
+              <linearGradient id="kgFoot" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#e8924e" />
+                <stop offset="1" stop-color="#d97f3f" />
+              </linearGradient>
+              <radialGradient id="kgBlush">
+                <stop offset="0" stop-color="#ffa8c5" stop-opacity="0.95" />
+                <stop offset="1" stop-color="#ffa8c5" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <!-- 地面柔影 -->
+            <ellipse cx="62" cy="129" rx="36" ry="6.5" fill="#d9a05f" opacity="0.22" />
+            <!-- 粗尾巴（向后撑地，待机轻摆） -->
+            <g class="tail">
+              <path d="M88 92 Q118 100 126 122" stroke="url(#kgBody)" stroke-width="11" stroke-linecap="round" fill="none" />
+            </g>
             <!-- 强壮的大脚 -->
-            <ellipse cx="44" cy="120" rx="17" ry="7" fill="#d98e4a" />
-            <ellipse cx="80" cy="120" rx="17" ry="7" fill="#d98e4a" />
-            <!-- 梨形身体与奶油色肚皮 -->
-            <ellipse cx="62" cy="84" rx="29" ry="36" fill="#f0a55c" />
-            <ellipse cx="62" cy="90" rx="18" ry="24" fill="#ffedd6" />
+            <ellipse cx="44" cy="120" rx="17" ry="7" fill="url(#kgFoot)" />
+            <ellipse cx="80" cy="120" rx="17" ry="7" fill="url(#kgFoot)" />
+            <!-- 梨形身体与奶油渐变肚皮 -->
+            <ellipse cx="62" cy="84" rx="29" ry="36" fill="url(#kgBody)" />
+            <ellipse cx="62" cy="90" rx="18" ry="24" fill="url(#kgBelly)" />
             <!-- 短小手 -->
-            <ellipse class="paw paw-l" cx="35" cy="76" rx="5.5" ry="10" fill="#f0a55c" />
-            <ellipse class="paw paw-r" cx="89" cy="76" rx="5.5" ry="10" fill="#f0a55c" />
-            <!-- 育儿袋里的小袋鼠（好奇状态时探头） -->
+            <ellipse class="paw paw-l" cx="35" cy="76" rx="5.5" ry="10" fill="url(#kgBody)" />
+            <ellipse class="paw paw-r" cx="89" cy="76" rx="5.5" ry="10" fill="url(#kgBody)" />
+            <!-- 育儿袋里的小袋鼠（好奇/探头时上移） -->
             <g class="joey">
-              <ellipse cx="57" cy="70" rx="2.6" ry="5" fill="#f0a55c" transform="rotate(-14 57 70)" />
-              <ellipse cx="67" cy="70" rx="2.6" ry="5" fill="#f0a55c" transform="rotate(14 67 70)" />
-              <circle cx="62" cy="77" r="7" fill="#f0a55c" />
+              <ellipse cx="57" cy="70" rx="2.6" ry="5" fill="#e8924e" transform="rotate(-14 57 70)" />
+              <ellipse cx="67" cy="70" rx="2.6" ry="5" fill="#e8924e" transform="rotate(14 67 70)" />
+              <circle cx="62" cy="77" r="7" fill="url(#kgBody)" />
               <circle cx="59.5" cy="76" r="1.3" fill="#4a3f55" />
               <circle cx="64.5" cy="76" r="1.3" fill="#4a3f55" />
               <circle cx="62" cy="79.6" r="1.2" fill="#8a5a33" />
             </g>
             <!-- 育儿袋开口 -->
-            <path d="M48 84 Q62 100 76 84" stroke="#d98e4a" stroke-width="2.5" stroke-linecap="round" fill="none" />
-            <!-- 头部与吻部 -->
-            <circle cx="62" cy="42" r="21" fill="#f0a55c" />
-            <ellipse cx="62" cy="50" rx="12" ry="9" fill="#ffedd6" />
-            <!-- 标志性长耳朵（好奇时竖起） -->
+            <path d="M48 84 Q62 100 76 84" stroke="#c97a3c" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <!-- 头部与头顶高光 -->
+            <circle cx="62" cy="42" r="21" fill="url(#kgBody)" />
+            <ellipse cx="52" cy="26.5" rx="9" ry="4.5" fill="#fff" opacity="0.35" transform="rotate(-32 52 26.5)" />
+            <!-- 吻部 -->
+            <ellipse cx="62" cy="50" rx="12" ry="9" fill="url(#kgBelly)" />
+            <!-- 标志性长耳朵（好奇竖起、失落耷拉、随机抖动） -->
             <g class="ear ear-l">
-              <ellipse cx="48" cy="16" rx="6.5" ry="17" fill="#f0a55c" />
-              <ellipse cx="48" cy="18" rx="3" ry="10" fill="#ffd3e3" />
+              <ellipse cx="48" cy="16" rx="6.5" ry="17" fill="url(#kgBody)" />
+              <ellipse cx="48" cy="18" rx="3" ry="10" fill="url(#kgInnerEar)" />
             </g>
             <g class="ear ear-r">
-              <ellipse cx="76" cy="16" rx="6.5" ry="17" fill="#f0a55c" />
-              <ellipse cx="76" cy="18" rx="3" ry="10" fill="#ffd3e3" />
+              <ellipse cx="76" cy="16" rx="6.5" ry="17" fill="url(#kgBody)" />
+              <ellipse cx="76" cy="18" rx="3" ry="10" fill="url(#kgInnerEar)" />
             </g>
-            <!-- 腮红 -->
-            <ellipse cx="43" cy="50" rx="5.5" ry="3.5" fill="#ffa8c5" opacity="0.8" />
-            <ellipse cx="81" cy="50" rx="5.5" ry="3.5" fill="#ffa8c5" opacity="0.8" />
-            <!-- 眼睛（眼白 + 可移动瞳孔） -->
+            <!-- 腮红柔光 -->
+            <ellipse cx="42" cy="50" rx="6.5" ry="5" fill="url(#kgBlush)" />
+            <ellipse cx="82" cy="50" rx="6.5" ry="5" fill="url(#kgBlush)" />
+            <!-- 眼睛（眼白 + 双高光瞳孔 + 失落眼皮 + 泪珠） -->
             <g class="eye">
-              <circle cx="53" cy="40" r="7.5" fill="#fff" />
+              <circle cx="53" cy="40" r="7.5" fill="#fffdf8" />
               <g class="pupil">
                 <circle cx="53" cy="40" r="3.6" fill="#4a3f55" />
-                <circle cx="51.9" cy="38.8" r="1.2" fill="#fff" />
+                <circle cx="51.9" cy="38.8" r="1.3" fill="#fff" />
+                <circle cx="54.4" cy="41.4" r="0.7" fill="#fff" opacity="0.8" />
               </g>
+              <path class="eyelid" d="M45.5 40 A7.5 7.5 0 0 1 60.5 40 Z" fill="#eda254" />
+              <path class="tear" d="M46.5 44.5 C44 48 44.6 50.6 46.5 51.4 C48.4 50.6 49 48 46.5 44.5 Z" fill="#9ed4f2" />
             </g>
             <g class="eye">
-              <circle cx="71" cy="40" r="7.5" fill="#fff" />
+              <circle cx="71" cy="40" r="7.5" fill="#fffdf8" />
               <g class="pupil">
                 <circle cx="71" cy="40" r="3.6" fill="#4a3f55" />
-                <circle cx="69.9" cy="38.8" r="1.2" fill="#fff" />
+                <circle cx="69.9" cy="38.8" r="1.3" fill="#fff" />
+                <circle cx="72.4" cy="41.4" r="0.7" fill="#fff" opacity="0.8" />
               </g>
+              <path class="eyelid" d="M63.5 40 A7.5 7.5 0 0 1 78.5 40 Z" fill="#eda254" />
             </g>
+            <!-- 生气眉（默认隐藏） -->
+            <path class="brow" d="M46 29 L58.5 33.5" stroke="#8a5a33" stroke-width="2.4" stroke-linecap="round" />
+            <path class="brow" d="M78 29 L65.5 33.5" stroke="#8a5a33" stroke-width="2.4" stroke-linecap="round" />
             <!-- 期待时的星星眼（默认隐藏） -->
             <path class="star-eye" transform="translate(53 40) scale(0.9)" fill="#ffd43b" stroke="#f0a500" stroke-width="1.4" stroke-linejoin="round"
               d="M0 -7 L2.1 -2.6 L7 -2.6 L3.1 0.9 L4.4 5.7 L0 3.1 L-4.4 5.7 L-3.1 0.9 L-7 -2.6 L-2.1 -2.6 Z" />
             <path class="star-eye" transform="translate(71 40) scale(0.9)" fill="#ffd43b" stroke="#f0a500" stroke-width="1.4" stroke-linejoin="round"
               d="M0 -7 L2.1 -2.6 L7 -2.6 L3.1 0.9 L4.4 5.7 L0 3.1 L-4.4 5.7 L-3.1 0.9 L-7 -2.6 L-2.1 -2.6 Z" />
-            <!-- 鼻子与嘴：微笑 / 张嘴（期待时切换） -->
+            <!-- 鼻子与嘴：微笑 / 张嘴（期待、生气时切换） -->
             <ellipse cx="62" cy="47" rx="3.6" ry="2.7" fill="#8a5a33" />
             <path class="mouth-smile" d="M55 53 Q62 59 69 53" stroke="#4a3f55" stroke-width="2.2" stroke-linecap="round" fill="none" />
             <g class="mouth-open">
