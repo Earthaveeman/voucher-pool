@@ -808,33 +808,97 @@ $('#resetBtn').addEventListener('click', () => {
     if (cur === STATE.SAD && next !== STATE.SAD) clearTimeout(sadTimer);
     if (cur === STATE.ANGRY && next !== STATE.ANGRY) clearTimeout(angryTimer);
     mascot.dataset.state = next;
+    if (!rafId) rafId = requestAnimationFrame(followFrame); // 状态切换立即刷新瞳孔缩放/头部权重
   }
 
-  /* --- 瞳孔实时跟随鼠标 --- */
+  /* --- 瞳孔 + 头部协同跟随 ---
+     瞳孔即时响应（先看），头部以阻尼插值延迟跟随（后转头），鼠标静止 2s 后头部缓慢回中 */
   const pupils = [...mascot.querySelectorAll('.pupil')];
-  const MAX_SHIFT = 4.2; // 瞳孔最大偏移（SVG 单位）
+  const head = mascot.querySelector('.head');
+  const MAX_SHIFT = 4.2;     // 瞳孔最大偏移（SVG 单位）
+  const HEAD_MAX_ROT = 7;    // 头部最大侧转（度）
+  const HEAD_MAX_X = 2;      // 头部水平位移上限（px）
+  const HEAD_MAX_Y = 1.6;    // 头部垂直位移上限（px）
+  const HEAD_EASE = 0.055;   // 头部阻尼系数：越小越滞后，无超调
+  const HEAD_IDLE_MS = 2000; // 鼠标静止多久后头部回中
+  const headRig = { rot: 0, x: 0, y: 0, tRot: 0, tX: 0, tY: 0 };
   let rafId = 0;
   let cursorX = 0;
   let cursorY = 0;
-  function updatePupils() {
+  let lastMoveAt = 0;
+  let geomStale = true;
+  let headCx = 0;
+  let headCy = 0;
+  let eyeCenters = [];
+  // 情绪动作优先：失落/生气/弹跳期间头部跟随权重降低；减少动态模式下头部不跟随
+  function headWeight() {
+    if (reducedMotion.matches) return 0;
+    const s = mascot.dataset.state;
+    if (s === STATE.SAD || s === STATE.ANGRY || mascot.classList.contains('is-boing')) return 0.3;
+    return 1;
+  }
+  function refreshGeom() {
+    if (!geomStale) return;
+    const r = head.getBoundingClientRect();
+    headCx = r.left + r.width / 2;
+    headCy = r.top + r.height / 2;
+    eyeCenters = pupils.map((p) => {
+      const e = p.closest('.eye').getBoundingClientRect();
+      return { x: e.left + e.width / 2, y: e.top + e.height / 2 };
+    });
+    geomStale = false;
+  }
+  function followFrame() {
     rafId = 0;
-    if (mascot.dataset.state === STATE.EAGER) return; // 星星眼状态下无需追视
-    for (const p of pupils) {
-      const eye = p.closest('.eye').getBoundingClientRect();
-      const cx = eye.left + eye.width / 2;
-      const cy = eye.top + eye.height / 2;
-      const dx = cursorX - cx;
-      const dy = cursorY - cy;
-      const dist = Math.hypot(dx, dy) || 1;
-      const k = Math.min(dist / 30, 1) * MAX_SHIFT; // 近处小动、远处封顶
-      p.style.transform = `translate(${(dx / dist) * k}px, ${(dy / dist) * k}px)`;
+    refreshGeom();
+    const now = Date.now();
+    const idle = now - lastMoveAt > HEAD_IDLE_MS;
+    const w = headWeight();
+    // 瞳孔：即时跟随，期待态同步放大（含高光）；鼠标尚未移动过时保持居中
+    const scale = mascot.dataset.state === STATE.EAGER ? 1.22 : 1;
+    if (lastMoveAt) {
+      pupils.forEach((p, i) => {
+        const c = eyeCenters[i];
+        const dx = cursorX - c.x;
+        const dy = cursorY - c.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const k = Math.min(dist / 30, 1) * MAX_SHIFT; // 近处小动、远处封顶
+        p.style.transform = `translate(${(dx / dist) * k}px, ${(dy / dist) * k}px) scale(${scale})`;
+      });
+    } else {
+      // 未追踪过鼠标时也同步期待态的瞳孔缩放（如键盘聚焦触发）
+      pupils.forEach((p) => { p.style.transform = scale === 1 ? '' : `scale(${scale})`; });
     }
+    // 头部：目标角度按鼠标方向与距离衰减，静止回中；阻尼趋近形成自然惯性
+    const dx = cursorX - headCx;
+    const dy = cursorY - headCy;
+    const dist = Math.hypot(dx, dy) || 1;
+    const reach = idle ? 0 : Math.min(dist / 140, 1) * w; // 距离越远转动越趋饱和
+    headRig.tRot = (dx / dist) * HEAD_MAX_ROT * reach;
+    headRig.tX = (dx / dist) * HEAD_MAX_X * reach;
+    headRig.tY = (dy / dist) * HEAD_MAX_Y * reach;
+    headRig.rot += (headRig.tRot - headRig.rot) * HEAD_EASE;
+    headRig.x += (headRig.tX - headRig.x) * HEAD_EASE;
+    headRig.y += (headRig.tY - headRig.y) * HEAD_EASE;
+    head.style.setProperty('--head-rot', `${headRig.rot.toFixed(2)}deg`);
+    head.style.setProperty('--head-x', `${headRig.x.toFixed(2)}px`);
+    head.style.setProperty('--head-y', `${headRig.y.toFixed(2)}px`);
+    // 未静止或未归位时继续下一帧，否则停表省电
+    const settled =
+      Math.abs(headRig.tRot - headRig.rot) < 0.02 &&
+      Math.abs(headRig.tX - headRig.x) < 0.02 &&
+      Math.abs(headRig.tY - headRig.y) < 0.02;
+    if (!idle || !settled) rafId = requestAnimationFrame(followFrame);
   }
   document.addEventListener('mousemove', (e) => {
     cursorX = e.clientX;
     cursorY = e.clientY;
-    if (!rafId) rafId = requestAnimationFrame(updatePupils);
+    lastMoveAt = Date.now();
+    if (!rafId) rafId = requestAnimationFrame(followFrame);
   }, { passive: true });
+  // 滚动/缩放后几何缓存失效，下一帧重取
+  window.addEventListener('scroll', () => { geomStale = true; }, { passive: true });
+  window.addEventListener('resize', () => { geomStale = true; });
 
   /* --- 悬停/键盘聚焦大按钮 → 期待 / 好奇（优先级高于失落） --- */
   function bindHoverState(btn, state) {
