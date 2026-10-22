@@ -183,6 +183,75 @@ function toast(msg, type = 'ok') {
   toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
 }
 
+/* ---------- 分享成功：全屏庆祝 ---------- */
+const SHARE_SUCCESS_MESSAGES = [
+  '分享成功啦，你超棒的～',
+  '叮咚～票据已安全抵达池子～',
+  '哇哦，又一张票据来报到咯～',
+  '干得漂亮，票据池子更热闹啦～',
+  '票据投递完毕，奖励自己一朵小花～',
+  '发射成功～票据已就位～',
+  '好耶～分享小能手就是你～',
+  '票据咕噜一下滚进池子里啦～',
+  '完美～这份分享闪闪发光～',
+  '票据说：谢谢款待，我住下啦～',
+  '撒花～你的分享已签收～',
+  '棒棒哒，池子因你更满了一点～',
+  '噗通～票据跳水姿势满分～',
+  '小可爱，你的分享甜到我了～',
+  '票据扑腾着游进池子咯～',
+  '今日份好运已充值成功～',
+  '这张票据有点可爱，像你一样～',
+  '收藏成功，池子里又多一颗糖～',
+  '票据排排坐，你的这张最抢眼～',
+  '呜呼～分享达成，快乐翻倍～',
+  '票据挥挥小手说：我来啦～',
+  '暖呼呼的票据，已经安顿好啦～',
+  '给池子投喂成功，它很开心～',
+  '你一点分享，我一池欢喜～',
+  '票据已上线，坐等有缘人抱走～',
+  '咔嚓～分享瞬间已被定格～',
+  '这张票据将在池子里发光发热～',
+  '分享小火箭，嗖的一下就到位～',
+  '池子咕嘟咕嘟，欢迎新伙伴～',
+  '圆满～这张票据找到新家啦～'
+];
+
+const CONFETTI_COLORS = ['#ff6b9d', '#12b8a6', '#ffd43b', '#9775fa', '#ff8787', '#74c0fc'];
+let celebrateTimer = null;
+
+function showShareCelebrate() {
+  const el = $('#shareCelebrate');
+  const msg = SHARE_SUCCESS_MESSAGES[Math.floor(Math.random() * SHARE_SUCCESS_MESSAGES.length)];
+  el.querySelector('.celebrate-text').textContent = msg;
+
+  // 生成五彩纸屑
+  const box = el.querySelector('.celebrate-confetti');
+  box.innerHTML = '';
+  for (let i = 0; i < 48; i++) {
+    const p = document.createElement('i');
+    const size = 6 + Math.random() * 8;
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      width: ${size}px;
+      height: ${size * (Math.random() > 0.5 ? 1 : 0.5)}px;
+      background: ${CONFETTI_COLORS[i % CONFETTI_COLORS.length]};
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      animation-duration: ${1.6 + Math.random() * 1.4}s;
+      animation-delay: ${Math.random() * 0.6}s;
+      transform: rotate(${Math.random() * 360}deg);
+    `;
+    box.appendChild(p);
+  }
+
+  el.hidden = false;
+  clearTimeout(celebrateTimer);
+  celebrateTimer = setTimeout(() => {
+    el.classList.add('is-leaving');
+    setTimeout(() => { el.hidden = true; el.classList.remove('is-leaving'); }, 300);
+  }, 4000);
+}
+
 // 表单校验失败：抖动提示 + 聚焦
 function flagInvalid(el) {
   el.classList.remove('input-error');
@@ -318,7 +387,7 @@ $('#shareForm').addEventListener('submit', async (e) => {
     fd.append('uploader_name', $('#shareName').value);
     fd.append('remark', $('#shareRemark').value);
     const inv = await api('/api/invoices', { method: 'POST', body: fd });
-    toast(`分享成功～票据 #${inv.id} 已经跳进池子里咯`);
+    showShareCelebrate();
     e.target.reset();
     updateRemarkCount();
     remarkTip.hidden = true;
@@ -517,7 +586,7 @@ $('#claimConfirm').addEventListener('click', async () => {
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-loading');
-    btn.textContent = '寄给我！';
+    btn.textContent = '寄给我';
   }
 });
 

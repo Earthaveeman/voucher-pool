@@ -640,6 +640,71 @@ body {
 .toast.ok { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); }
 .toast.err { background: linear-gradient(135deg, #ff8787, #fa5252); }
 
+/* ===== 分享成功：全屏庆祝 ===== */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 63, 85, 0.45);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease;
+}
+.celebrate.is-leaving {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.celebrate-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.celebrate-confetti i {
+  position: absolute;
+  top: -16px;
+  display: block;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+.celebrate-card {
+  position: relative;
+  text-align: center;
+  padding: 44px 52px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, #ffffff, var(--pink-soft));
+  box-shadow: var(--shadow-hover);
+  animation: celebratePop 0.5s var(--bounce);
+  max-width: min(86vw, 560px);
+}
+@keyframes celebratePop {
+  0% { opacity: 0; transform: scale(0.3) rotate(-6deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.celebrate-emoji {
+  font-size: clamp(48px, 10vw, 72px);
+  line-height: 1;
+  animation: bob 1.2s ease-in-out infinite;
+}
+.celebrate-text {
+  margin: 18px 0 10px;
+  font-size: clamp(26px, 5.5vw, 40px);
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(120deg, var(--pink), var(--grape), var(--teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+
 /* ===== 无障碍：减少动态偏好 ===== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
