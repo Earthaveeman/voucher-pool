@@ -249,7 +249,7 @@ function showShareCelebrate() {
   celebrateTimer = setTimeout(() => {
     el.classList.add('is-leaving');
     setTimeout(() => { el.hidden = true; el.classList.remove('is-leaving'); }, 300);
-  }, 4000);
+  }, 3800);
 }
 
 // 表单校验失败：抖动提示 + 聚焦
