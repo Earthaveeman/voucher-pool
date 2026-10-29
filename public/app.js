@@ -488,7 +488,7 @@ const typeClass = (t) => TYPE_THEME[t] || 't-other';
 
 function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {}) {
   const control = checkboxIdx !== null
-    ? `<label class="pick" aria-label="选中这张票据"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} /></label>`
+    ? `<label class="pick" aria-label="选中这张票据"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} ${inv.status === 'available' ? '' : 'disabled'} /></label>`
     : '';
   const action = inv.status === 'available'
     ? `<button type="button" class="primary-btn small" data-claim="${inv.id}">寄到我邮箱</button>`
@@ -512,6 +512,7 @@ function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {
 /* ---------- 智能推荐 ---------- */
 let lastRecommend = null; // { amount, type }
 let recItems = [];
+let lastRecData = null; // 最近一次匹配接口的完整响应，领取后本地刷新复用
 
 async function runRecommend() {
   const amount = Number($('#needAmount').value);
@@ -537,6 +538,7 @@ async function runRecommend() {
     const data = await api(`/api/invoices/recommend?${qs}`);
     lastRecommend = { amount, types };
     recItems = data.items.map((it) => ({ ...it, checked: true }));
+    lastRecData = data;
     renderRecommend(data);
   } catch (err) {
     $('#recommendList').innerHTML = '';
@@ -726,10 +728,27 @@ function closeClaimModal() {
   $('#claimModal').hidden = true;
 }
 
-function refreshCurrentPanel() {
+// 领取成功后本地更新推荐结果：刚领走的票标记为“已被抱走”并取消勾选，
+// 不重新发起匹配请求（避免表现为自动又点了一次“帮我去匹配”）
+function markRecommendClaimed(ids) {
+  if (!lastRecommend) return;
+  const idSet = new Set(ids);
+  let changed = false;
+  for (const it of recItems) {
+    if (idSet.has(it.id) && it.status === 'available') {
+      it.status = 'claimed';
+      it.checked = false;
+      changed = true;
+    }
+  }
+  if (changed && lastRecData) renderRecommend(lastRecData);
+}
+
+function refreshCurrentPanel(reMatch = false) {
   if (!$('#panelRecommend').hidden) {
-    // 推荐页：仅在已有匹配条件时重跑，避免无意义请求
-    if (lastRecommend) runRecommend();
+    // 推荐页：默认仅本地更新状态；仅当数据已失效（如 409 冲突）时才重跑匹配
+    if (reMatch && lastRecommend) runRecommend();
+    else markRecommendClaimed(claimIds);
   } else if (manualLoaded) {
     loadManual(true);
   }
@@ -764,7 +783,7 @@ $('#claimConfirm').addEventListener('click', async () => {
     toast(err.message, 'err');
     if (err.message.includes('抱走')) {
       closeClaimModal();
-      refreshCurrentPanel();
+      refreshCurrentPanel(true); // 冲突时数据已失效，需要重新拉取/匹配
     }
   } finally {
     btn.disabled = false;
@@ -797,6 +816,7 @@ $('#matchBtn').addEventListener('click', runRecommend);
 function invalidateRecommend() {
   if (!lastRecommend) return;
   lastRecommend = null;
+  lastRecData = null;
   recItems = [];
   $('#recommendResult').hidden = true;
 }
