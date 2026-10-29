@@ -11,6 +11,12 @@
   --sunny: #ffd43b;
   --sunny-soft: #fff3bf;
   --grape: #9775fa;
+  --grape-soft: #efe4fb;
+  /* 类型徽章深色文字：在对应浅底色上对比度均 ≥4.5:1（WCAG AA 小字达标） */
+  --pink-ink: #c2265f;
+  --sunny-ink: #8a6608;
+  --teal-ink: #0b6e63;
+  --grape-ink: #6d3bb8;
   --bg: #fff7ee;
   --card: #ffffff;
   --text: #4a3f55;
@@ -518,11 +524,18 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
+/* 票据类型主题：卡片根元素携带类型 class，统一驱动左侧色条与类型徽章配色，
+   卡片页 / 列表页 / 推荐结果同源一致；未知类型回退为柠檬黄 */
+.invoice-card.t-food    { --type: var(--pink);  --type-soft: var(--pink-soft);  --type-ink: var(--pink-ink); }
+.invoice-card.t-fuel    { --type: var(--sunny); --type-soft: var(--sunny-soft); --type-ink: var(--sunny-ink); }
+.invoice-card.t-telecom { --type: var(--teal);  --type-soft: var(--teal-soft);  --type-ink: var(--teal-ink); }
+.invoice-card.t-other   { --type: var(--grape); --type-soft: var(--grape-soft); --type-ink: var(--grape-ink); }
 .invoice-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
+  box-shadow: var(--shadow), inset 5px 0 0 var(--type, transparent);
   transition: transform 0.22s var(--bounce), box-shadow 0.22s, border-color 0.2s;
   animation: cardIn 0.4s var(--bounce) both;
 }
@@ -532,11 +545,11 @@ body {
 }
 .invoice-card:hover {
   transform: translateY(-5px) rotate(-0.6deg);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-hover), inset 5px 0 0 var(--type, transparent);
   border-color: #ffd3e3;
 }
 .invoice-card.is-claimed { opacity: 0.6; }
-.invoice-card.is-claimed:hover { transform: none; box-shadow: var(--shadow); border-color: var(--border); }
+.invoice-card.is-claimed:hover { transform: none; box-shadow: var(--shadow), inset 5px 0 0 var(--type, transparent); border-color: var(--border); }
 .amount {
   font-size: 27px;
   font-weight: 800;
@@ -546,7 +559,7 @@ body {
 .invoice-card.is-claimed .amount { color: var(--muted); }
 .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .badge { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
-.badge.type { background: var(--sunny-soft); color: #b08600; }
+.badge.type { background: var(--type-soft, var(--sunny-soft)); color: var(--type-ink, var(--sunny-ink)); }
 .badge.claimed { background: #efe9f5; color: var(--muted); }
 .month { color: var(--muted); font-size: 13px; }
 .remark {

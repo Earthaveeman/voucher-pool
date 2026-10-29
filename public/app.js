@@ -309,7 +309,8 @@ function showView(name) {
   label.style.animation = '';
   window.scrollTo(0, 0);
   if (name === 'home') loadStats();
-  // 领取页默认落在「智能匹配」，无需预加载；切到「慢慢挑」时由 switchTab 懒加载
+  // 每次进入领取页都重置为默认 tab「智能匹配」；切到「慢慢挑」时由 switchTab 懒加载
+  if (name === 'claim') switchTab('recommend');
 }
 
 /* ---------- 首页统计 ---------- */
@@ -481,6 +482,10 @@ $('#shareForm').addEventListener('submit', async (e) => {
 });
 
 /* ---------- 票据卡片渲染 ---------- */
+// 票据类型 → 主题 class（与 style.css 中 .invoice-card.t-* 同源）；未识别的类型按「其他」着色
+const TYPE_THEME = { '餐饮': 't-food', '汽油': 't-fuel', '通信': 't-telecom', '其他': 't-other' };
+const typeClass = (t) => TYPE_THEME[t] || 't-other';
+
 function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {}) {
   const control = checkboxIdx !== null
     ? `<label class="pick" aria-label="选中这张票据"><input type="checkbox" data-idx="${checkboxIdx}" ${checked ? 'checked' : ''} /></label>`
@@ -489,7 +494,7 @@ function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {
     ? `<button type="button" class="primary-btn small" data-claim="${inv.id}">寄到我邮箱</button>`
     : `<span class="badge claimed">已被抱走</span>`;
   return `
-  <div class="invoice-card card ${inv.status === 'available' ? '' : 'is-claimed'}" style="animation-delay: ${Math.min(delayIdx, 8) * 55}ms">
+  <div class="invoice-card card ${typeClass(inv.invoice_type)} ${inv.status === 'available' ? '' : 'is-claimed'}" style="animation-delay: ${Math.min(delayIdx, 8) * 55}ms">
     ${control}
     <div class="amount">${money(inv.amount)}</div>
     <div class="meta">
@@ -616,8 +621,8 @@ let manualShown = 0;
 let manualHasMore = false;
 let manualLoading = false;
 
-// 展示方式偏好：card / list，记在本机浏览器里
-let viewMode = localStorage.getItem('vpViewMode') === 'list' ? 'list' : 'card';
+// 展示方式：card / list，仅会话内生效，每次进入页面默认卡片视图
+let viewMode = 'card';
 
 function applyViewMode() {
   $('#manualList').classList.toggle('as-list', viewMode === 'list');
@@ -855,15 +860,13 @@ $('#loadMoreBtn').addEventListener('click', () => {
   loadManual(false);
 });
 
-// 卡片 / 列表视图切换，偏好持久化
+// 卡片 / 列表视图切换，不持久化，刷新后回到默认卡片视图
 $('#viewCardBtn').addEventListener('click', () => {
   viewMode = 'card';
-  localStorage.setItem('vpViewMode', viewMode);
   applyViewMode();
 });
 $('#viewListBtn').addEventListener('click', () => {
   viewMode = 'list';
-  localStorage.setItem('vpViewMode', viewMode);
   applyViewMode();
 });
 applyViewMode();
