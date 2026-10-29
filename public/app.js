@@ -805,7 +805,8 @@ function switchTab(name) {
   $('#tabManual').setAttribute('aria-selected', String(!isRec));
   $('#panelRecommend').hidden = !isRec;
   $('#panelManual').hidden = isRec;
-  if (!isRec && !manualLoaded) loadManual();
+  // 每次切到「慢慢挑」都立即重新查询，避免展示旧数据（manualLoading 防重入）
+  if (!isRec) loadManual(true);
 }
 $('#tabRecommend').addEventListener('click', () => switchTab('recommend'));
 $('#tabManual').addEventListener('click', () => switchTab('manual'));
