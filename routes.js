@@ -49,6 +49,7 @@ const upload = multer({
 });
 
 // 列表/推荐对外脱敏：不含分享人联系方式、领取人邮箱、附件路径
+// （分享人姓名与领取后邮件明细一致，属于公开信息，供列表页展示）
 function toPublic(inv) {
   if (!inv) return null;
   return {
@@ -57,6 +58,7 @@ function toPublic(inv) {
     invoice_type: inv.invoice_type,
     invoice_month: inv.invoice_month,
     remark: inv.remark,
+    uploader_name: inv.uploader_name,
     status: inv.status,
     created_at: inv.created_at,
   };

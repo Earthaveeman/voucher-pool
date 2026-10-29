@@ -501,7 +501,8 @@ function cardHtml(inv, { checkboxIdx = null, checked = false, delayIdx = 0 } = {
       <span class="badge type">${esc(inv.invoice_type)}</span>
       <span class="month">开票于 ${esc(inv.invoice_month)}</span>
     </div>
-    ${inv.remark ? `<div class="remark">${esc(inv.remark)}</div>` : ''}
+    ${inv.remark ? `<div class="remark" title="${esc(inv.remark)}">${esc(inv.remark)}</div>` : ''}
+    <span class="uploader" title="${esc(inv.uploader_name || '匿名分享')}">由 ${esc(inv.uploader_name || '匿名小可爱')} 分享</span>
     <div class="foot">
       <span class="date">分享于 ${fmtDate(inv.created_at)}</span>
       ${action}

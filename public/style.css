@@ -638,6 +638,8 @@ body {
 }
 .pager-tip { margin: 0; color: var(--muted); font-size: 13px; text-align: center; }
 
+/* 分享人：仅列表模式展示，卡片模式隐藏 */
+.uploader { display: none; }
 /* 列表视图：紧凑行式布局 */
 .card-list.as-list { grid-template-columns: 1fr; gap: 10px; }
 .card-list.as-list .invoice-card {
@@ -647,11 +649,24 @@ body {
   padding: 14px 18px;
 }
 .card-list.as-list .invoice-card:hover { transform: translateY(-2px); }
-.card-list.as-list .amount { font-size: 20px; min-width: 96px; }
-.card-list.as-list .meta { flex: 1; }
+.card-list.as-list .amount { font-size: 20px; min-width: 96px; flex-shrink: 0; }
+.card-list.as-list .meta { flex-shrink: 0; }
 .card-list.as-list .remark { display: none; }
-.card-list.as-list .foot { margin-top: 0; flex-shrink: 0; }
-.card-list.as-list .date { display: none; }
+/* 分享人：弹性占满剩余空间，单行截断，hover 可通过 title 看全文 */
+.card-list.as-list .uploader {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-list.as-list .foot { margin-top: 0; flex-shrink: 0; gap: 12px; }
+.card-list.as-list .date { white-space: nowrap; }
+/* 列表模式：已被抱走的票据不再展示分享时间 */
+.card-list.as-list .invoice-card.is-claimed .date { display: none; }
 .card-list.as-list .skeleton-card { height: 62px; }
 
 /* 骨架屏加载 */
@@ -882,6 +897,8 @@ body {
   .card-list.as-list .invoice-card { flex-wrap: wrap; }
   .card-list.as-list .amount { min-width: 0; }
   .card-list.as-list .meta { flex: 1 1 100%; order: 3; }
+  /* 窄屏：分享人独占一行，避免过度截断 */
+  .card-list.as-list .uploader { flex: 1 1 100%; order: 4; white-space: normal; }
   .card-list.as-list .foot { margin-left: auto; }
   .summary-bar { flex-direction: column; align-items: stretch; text-align: center; }
   .modal-actions { flex-direction: column-reverse; }
