@@ -17,9 +17,15 @@
 - 开票年月格式 `YYYY-MM`（如 `2026-05`），前端原生月份选择器
 
 ### 智能匹配
-输入想要的金额（可选类型过滤），系统自动匹配
+输入想要的金额（可选类型过滤，支持多选），算法在可用票据池中搜索**全局最优组合**：
 
-推荐结果支持逐张勾选微调后再领取；票据池总额不足时返回全部可用票据并明确提示。
+- 打分规则（依次比较）：合计与目标**差额最小**（能精确凑齐绝不多凑）→ 差额打平时优先凑够 → **张数最少** → 优先消化**开票较早**的票据
+- 底层为整数分值上的动态规划（加权子集和），全局最优而非贪心近似
+- 票据池凑不够目标时，返回**离目标最接近的组合**并明确提示还差多少（而非全部票据）
+- 匹配说明（差额、张数、策略文案）随推荐结果一起返回，前端展示「刚好凑齐 / 差额最小 / 最接近组合」徽章
+- 推荐张数不超过单次领取上限，勾选后可直接领取
+
+推荐结果支持逐张勾选微调后再领取。
 
 ### 手动筛选
 按金额范围、类型、开票年月、状态组合筛选票据池。
@@ -130,9 +136,12 @@ Query 参数：`min_amount`、`max_amount`、`invoice_type`、`month_from`、`mo
 
 ### 3. 智能推荐 — `GET /api/invoices/recommend`
 
-Query 参数：`amount`（想要的金额，必填 >0）、`invoice_type`（可选，缺省为全部类型）。
+Query 参数：`amount`（想要的金额，必填 >0）、`invoice_type`（可选，可重复出现实现多选，缺省为全部类型）。
 
-返回 `{ items, total, target, sufficient }`；`sufficient=false` 表示票据池可用总额不足。
+返回 `{ items, total, target, sufficient, matchExplain }`：
+
+- `sufficient=false` 表示推荐组合合计未达目标，此时返回的是差额最小的**最接近组合**（而非全部票据）
+- `matchExplain`：`{ exact, gap, count, strategy }` —— 是否精确凑齐 / 差额（元，正=多出、负=还差）/ 组合张数 / 中文策略说明
 
 ### 4. 领取 — `POST /api/claims`
 
@@ -156,7 +165,8 @@ voucher-pool/
 ├── server.js          # 入口：加载 .env、静态托管、路由挂载、统一错误处理
 ├── db.js              # node:sqlite 初始化：WAL、建表、索引、事务包装、类型名迁移
 ├── mailer.js          # 发信：真实 SMTP / 模拟 .eml 双模式；含本机 DNS 预解析兼容
-├── routes.js          # 5 个 API 端点 + 推荐算法 + 批量领取事务
+├── routes.js          # 5 个 API 端点（推荐编排）+ 批量领取事务
+├── matcher.js         # 智能匹配算法：加权子集和 DP（差额最小→凑够优先→张数最少→年月较早）
 ├── package.json
 ├── .env.example       # SMTP 配置模板
 ├── .gitignore         # 忽略 node_modules/、data/、.env

@@ -546,14 +546,34 @@ async function runRecommend() {
 function renderRecommend(data) {
   $('#recommendResult').hidden = false;
   const notice = $('#recommendNotice');
+  const badge = $('#matchBadge');
+  const explain = data.matchExplain;
   if (recItems.length === 0) {
     notice.hidden = false;
+    notice.className = 'notice warn';
     notice.textContent = '池子空空如也，暂时没找到合适的票据呀～';
-  } else if (!data.sufficient) {
+  } else if (explain && explain.strategy) {
+    // 匹配说明由后端统一生成：精确凑齐 / 多出最少 / 凑不够时最接近的一组
     notice.hidden = false;
-    notice.textContent = `池子里的票据凑不够哦（现在共 ${money(data.total)}，离 ${money(data.target)} 还差一点），下面是可以抱走的全部票据啦`;
+    notice.className = `notice ${explain.exact ? 'good' : 'warn'}`;
+    notice.textContent = explain.strategy;
   } else {
     notice.hidden = true;
+  }
+  if (recItems.length === 0 || !explain) {
+    badge.hidden = true;
+  } else {
+    badge.hidden = false;
+    if (explain.exact) {
+      badge.textContent = '刚好凑齐';
+      badge.className = 'match-badge exact';
+    } else if (data.sufficient) {
+      badge.textContent = '差额最小';
+      badge.className = 'match-badge close';
+    } else {
+      badge.textContent = '最接近组合';
+      badge.className = 'match-badge near';
+    }
   }
   $('#recommendSummaryBar').hidden = recItems.length === 0;
 

@@ -612,6 +612,31 @@ body {
   color: #96700a;
   border: 2px dashed #f0c800;
 }
+.notice.good {
+  background: #e6fbf6;
+  color: #0b7a6b;
+  border: 2px dashed #12b8a6;
+}
+/* 匹配结果徽章：刚好凑齐 / 差额最小 / 最接近组合 */
+.match-badge {
+  flex: none;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  animation: popIn 0.3s var(--bounce);
+}
+.match-badge.exact {
+  background: linear-gradient(120deg, #ff6b9d, #9775fa);
+}
+.match-badge.close {
+  background: #12b8a6;
+}
+.match-badge.near {
+  background: #f0c800;
+  color: #6b5406;
+}
 
 /* ===== 弹窗 ===== */
 .modal-mask {

@@ -5,6 +5,7 @@ const express = require('express');
 const multer = require('multer');
 const { db, transaction, UPLOADS_DIR } = require('./db');
 const { sendMail } = require('./mailer');
+const { findBestMatch } = require('./matcher');
 
 const router = express.Router();
 
@@ -257,6 +258,26 @@ router.get('/invoices', (req, res, next) => {
 });
 
 // ---------- 3. 智能推荐 ----------
+// 开票年月 → 序数（YYYY*12+月序）：数值越小代表开票越早
+const monthOrd = (m) => Number(m.slice(0, 4)) * 12 + (Number(m.slice(5, 7)) - 1);
+
+// 组装匹配说明（差额/张数/策略），文案供前端直接展示
+function buildMatchExplain(match, target) {
+  if (!match || match.count === 0) {
+    return { exact: false, gap: -target, count: 0, strategy: '池子里暂时没有能匹配的票据呀，先去别处逛逛？' };
+  }
+  const gap = match.gapCents / 100;
+  let strategy;
+  if (match.exact) {
+    strategy = '一分不差，刚好凑齐啦～';
+  } else if (match.gapCents > 0) {
+    strategy = `没有刚好凑齐的组合，这组只多出 ${money(gap)}，已经是差额最小的一组啦`;
+  } else {
+    strategy = `池子凑不够，这 ${match.count} 张离目标最近，还差 ${money(-gap)}，有新票进来再来试试嘛`;
+  }
+  return { exact: match.exact, gap, count: match.count, strategy };
+}
+
 router.get('/invoices/recommend', (req, res, next) => {
   try {
     const target = Number(req.query.amount);
@@ -272,36 +293,30 @@ router.get('/invoices/recommend', (req, res, next) => {
       ? db.prepare(`SELECT * FROM invoices WHERE status='available' AND invoice_type IN (${types.map(() => '?').join(',')})`).all(...types)
       : db.prepare(`SELECT * FROM invoices WHERE status='available'`).all();
 
-    // 金额统一换算为"分"（整数）参与比较，规避二进制浮点误差（如 0.1 + 0.2 !== 0.3）
-    const cents = (x) => Math.round(x * 100);
-    for (const it of pool) it.cents = cents(it.amount);
+    // 金额统一换算为"分"（整数）参与匹配，规避二进制浮点误差（如 0.1 + 0.2 !== 0.3）
+    const targetCents = Math.round(target * 100);
+    const candidates = pool
+      .map((inv) => ({ id: inv.id, cents: Math.round(inv.amount * 100), monthOrd: monthOrd(inv.invoice_month) }))
+      .filter((c) => c.cents > 0);
 
-    // 开票年月 ASC，同年月金额 ASC：优先日期较早
-    const sorted = pool.sort(byDateAsc);
-    // 金额 ASC，金额相同取日期较早：用于"收尾取超额最小"
-    const byAmount = [...pool].sort((a, b) => a.cents - b.cents || byDateAsc(a, b));
+    // 全新加权组合优化算法：差额最小 → 凑够优先 → 张数最少 → 年月较早
+    const match = findBestMatch(candidates, targetCents, { maxCount: MAX_CLAIM_COUNT });
 
-    const targetCents = cents(target);
-    const selectedIds = new Set();
-    const selected = [];
-    let sumCents = 0;
-    while (sumCents < targetCents && selectedIds.size < sorted.length) {
-      const gap = targetCents - sumCents;
-      // 累计阶段：在"能装入缺口"的候选中按较早日期优先纳入；
-      // 仅当剩余票据全部超过缺口时才进入收尾，取 ≥ 缺口的最小者（金额相同取日期较早）
-      const fitOldest = sorted.find((i) => !selectedIds.has(i.id) && i.cents <= gap);
-      const pick =
-        fitOldest ||
-        byAmount.find((i) => !selectedIds.has(i.id) && i.cents >= gap) ||
-        sorted.find((i) => !selectedIds.has(i.id)); // 兜底：循环条件保证必有未选票据
-      selectedIds.add(pick.id);
-      selected.push(pick);
-      sumCents += pick.cents;
-    }
+    const byId = new Map(pool.map((inv) => [inv.id, inv]));
+    const pickedRows = match ? match.picked.map((id) => byId.get(id)).filter(Boolean) : [];
+    pickedRows.sort(byDateAsc);
 
-    selected.sort(byDateAsc);
-    const sum = sumCents / 100;
-    res.json({ items: selected.map(toPublic), total: sum, target, sufficient: sumCents >= targetCents });
+    const sumCents = pickedRows.reduce((s, r) => s + Math.round(r.amount * 100), 0);
+    const total = sumCents / 100;
+    const sufficient = sumCents >= targetCents;
+
+    res.json({
+      items: pickedRows.map(toPublic),
+      total,
+      target,
+      sufficient,
+      matchExplain: buildMatchExplain(match, target),
+    });
   } catch (err) {
     next(err);
   }
