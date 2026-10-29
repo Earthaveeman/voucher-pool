@@ -573,6 +573,74 @@ body {
 .pick input:hover { transform: scale(1.2); }
 .empty { color: var(--muted); text-align: center; padding: 44px 0; grid-column: 1 / -1; font-size: 15px; }
 
+/* 列表工具条：总数 + 卡片/列表切换 */
+.list-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+}
+.list-count { color: var(--muted); font-size: 13px; }
+.view-switch {
+  display: flex;
+  gap: 4px;
+  background: #fff;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+}
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.2s, transform 0.2s var(--bounce);
+}
+.view-btn svg { width: 15px; height: 15px; }
+.view-btn:hover:not(.active) { color: var(--pink-dark); }
+.view-btn.active {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(255, 107, 157, 0.35);
+}
+.view-btn:active { transform: scale(0.95); transition-duration: 0.06s; }
+.view-btn:focus-visible { outline: 3px solid var(--grape); outline-offset: 2px; }
+
+/* 分页区 */
+.pager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.pager-tip { margin: 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+/* 列表视图：紧凑行式布局 */
+.card-list.as-list { grid-template-columns: 1fr; gap: 10px; }
+.card-list.as-list .invoice-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+}
+.card-list.as-list .invoice-card:hover { transform: translateY(-2px); }
+.card-list.as-list .amount { font-size: 20px; min-width: 96px; }
+.card-list.as-list .meta { flex: 1; }
+.card-list.as-list .remark { display: none; }
+.card-list.as-list .foot { margin-top: 0; flex-shrink: 0; }
+.card-list.as-list .date { display: none; }
+.card-list.as-list .skeleton-card { height: 62px; }
+
 /* 骨架屏加载 */
 .skeleton-card {
   height: 148px;
@@ -797,6 +865,11 @@ body {
   .subtabs { width: 100%; }
   .subtab { flex: 1; }
   .card-list { grid-template-columns: 1fr; }
+  .list-toolbar { flex-wrap: wrap; }
+  .card-list.as-list .invoice-card { flex-wrap: wrap; }
+  .card-list.as-list .amount { min-width: 0; }
+  .card-list.as-list .meta { flex: 1 1 100%; order: 3; }
+  .card-list.as-list .foot { margin-left: auto; }
   .summary-bar { flex-direction: column; align-items: stretch; text-align: center; }
   .modal-actions { flex-direction: column-reverse; }
   .modal-actions .primary-btn, .modal-actions .ghost-btn { width: 100%; }

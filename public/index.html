@@ -92,12 +92,36 @@
     <section id="view-claim" class="view" hidden>
       <h2 class="view-title">来领票据啦~</h2>
       <div class="subtabs" role="tablist" aria-label="领取方式">
-        <button type="button" class="subtab active" id="tabManual" role="tab" aria-selected="true" aria-controls="panelManual">慢慢挑</button>
-        <button type="button" class="subtab" id="tabRecommend" role="tab" aria-selected="false" aria-controls="panelRecommend">智能匹配</button>
+        <button type="button" class="subtab active" id="tabRecommend" role="tab" aria-selected="true" aria-controls="panelRecommend">智能匹配</button>
+        <button type="button" class="subtab" id="tabManual" role="tab" aria-selected="false" aria-controls="panelManual">慢慢挑</button>
       </div>
 
-      <!-- 子标签 A：手动筛选 -->
-      <div id="panelManual" class="panel" role="tabpanel" aria-labelledby="tabManual">
+      <!-- 子标签 A：智能推荐 -->
+      <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend">
+        <div class="card filter-card">
+          <label class="field inline">
+            <span class="field-label">想要的金额 <span id="needAmountCap">（最多 1000）</span> <em>*</em></span>
+            <input type="number" id="needAmount" min="0.01" max="1000" step="0.01" placeholder="比如 500" aria-describedby="needAmountCap" />
+          </label>
+          <div class="field inline">
+            <span class="field-label">票据类型（可多选）</span>
+            <div id="needType"></div>
+          </div>
+          <button type="button" class="primary-btn" id="matchBtn">帮我去匹配</button>
+        </div>
+        <div id="recommendResult" hidden>
+          <p class="notice warn" id="recommendNotice" hidden></p>
+          <div id="recommendList" class="card-list"></div>
+          <div class="card summary-bar" id="recommendSummaryBar">
+            <span class="match-badge" id="matchBadge" hidden></span>
+            <span id="recommendSummary"></span>
+            <button type="button" class="primary-btn" id="claimRecommendBtn" disabled>选中的寄给我</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子标签 B：手动筛选 -->
+      <div id="panelManual" class="panel" role="tabpanel" aria-labelledby="tabManual" hidden>
         <div class="card filter-card">
           <label class="field inline">
             <span class="field-label">金额范围</span>
@@ -128,30 +152,31 @@
             <button type="button" class="ghost-btn" id="resetBtn">清空重来</button>
           </div>
         </div>
-        <div id="manualList" class="card-list"></div>
-      </div>
-
-      <!-- 子标签 B：智能推荐 -->
-      <div id="panelRecommend" class="panel" role="tabpanel" aria-labelledby="tabRecommend" hidden>
-        <div class="card filter-card">
-          <label class="field inline">
-            <span class="field-label">想要的金额 <span id="needAmountCap">（最多 1000）</span> <em>*</em></span>
-            <input type="number" id="needAmount" min="0.01" max="1000" step="0.01" placeholder="比如 500" aria-describedby="needAmountCap" />
-          </label>
-          <div class="field inline">
-            <span class="field-label">票据类型（可多选）</span>
-            <div id="needType"></div>
+        <div class="list-toolbar">
+          <span class="list-count" id="manualCount" aria-live="polite"></span>
+          <div class="view-switch" role="group" aria-label="展示方式">
+            <button type="button" class="view-btn active" id="viewCardBtn" aria-pressed="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="8" height="8" rx="1.5" />
+                <rect x="13" y="3" width="8" height="8" rx="1.5" />
+                <rect x="3" y="13" width="8" height="8" rx="1.5" />
+                <rect x="13" y="13" width="8" height="8" rx="1.5" />
+              </svg>
+              卡片
+            </button>
+            <button type="button" class="view-btn" id="viewListBtn" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 6h12M9 12h12M9 18h12" />
+                <path d="M4 6h.01M4 12h.01M4 18h.01" />
+              </svg>
+              列表
+            </button>
           </div>
-          <button type="button" class="primary-btn" id="matchBtn">帮我去匹配</button>
         </div>
-        <div id="recommendResult" hidden>
-          <p class="notice warn" id="recommendNotice" hidden></p>
-          <div id="recommendList" class="card-list"></div>
-          <div class="card summary-bar" id="recommendSummaryBar">
-            <span class="match-badge" id="matchBadge" hidden></span>
-            <span id="recommendSummary"></span>
-            <button type="button" class="primary-btn" id="claimRecommendBtn" disabled>选中的寄给我</button>
-          </div>
+        <div id="manualList" class="card-list"></div>
+        <div class="pager" id="manualPager" hidden>
+          <button type="button" class="ghost-btn" id="loadMoreBtn">再翻一页</button>
+          <p class="pager-tip" id="pagerTip"></p>
         </div>
       </div>
     </section>

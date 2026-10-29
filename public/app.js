@@ -309,7 +309,7 @@ function showView(name) {
   label.style.animation = '';
   window.scrollTo(0, 0);
   if (name === 'home') loadStats();
-  if (name === 'claim' && !manualLoaded) loadManual();
+  // 领取页默认落在「智能匹配」，无需预加载；切到「慢慢挑」时由 switchTab 懒加载
 }
 
 /* ---------- 首页统计 ---------- */
@@ -607,10 +607,27 @@ function updateRecommendSummary() {
   $('#claimRecommendBtn').disabled = checked.length === 0;
 }
 
-/* ---------- 手动筛选 ---------- */
+/* ---------- 手动筛选（分页加载 + 卡片/列表双视图） ---------- */
+const MANUAL_PAGE_SIZE = 24;
 let manualLoaded = false;
+let manualPage = 1;
+let manualTotal = 0;
+let manualShown = 0;
+let manualHasMore = false;
+let manualLoading = false;
 
-async function loadManual() {
+// 展示方式偏好：card / list，记在本机浏览器里
+let viewMode = localStorage.getItem('vpViewMode') === 'list' ? 'list' : 'card';
+
+function applyViewMode() {
+  $('#manualList').classList.toggle('as-list', viewMode === 'list');
+  $('#viewCardBtn').classList.toggle('active', viewMode === 'card');
+  $('#viewListBtn').classList.toggle('active', viewMode === 'list');
+  $('#viewCardBtn').setAttribute('aria-pressed', String(viewMode === 'card'));
+  $('#viewListBtn').setAttribute('aria-pressed', String(viewMode === 'list'));
+}
+
+function buildManualQuery() {
   const qs = new URLSearchParams();
   const min = $('#filterMin').value;
   const max = $('#filterMax').value;
@@ -622,20 +639,71 @@ async function loadManual() {
   if ($('#filterMonth').value) qs.set('invoice_month', $('#filterMonth').value);
   // 状态：不选即查询全部
   if ($('#filterStatus').value) qs.set('status', $('#filterStatus').value);
-  renderSkeletons($('#manualList'));
+  return qs;
+}
+
+function updateManualPager() {
+  const pager = $('#manualPager');
+  $('#manualCount').textContent = manualTotal ? `共 ${manualTotal} 张符合条件的票据` : '';
+  if (!manualTotal) {
+    pager.hidden = true;
+    return;
+  }
+  pager.hidden = false;
+  $('#loadMoreBtn').hidden = !manualHasMore;
+  $('#pagerTip').textContent = manualHasMore
+    ? `已亮出 ${manualShown} 张，还有 ${manualTotal - manualShown} 张在排队哦`
+    : (manualTotal > MANUAL_PAGE_SIZE ? `${manualTotal} 张全都亮出来啦，到底咯～` : '');
+}
+
+async function loadManual(reset = true) {
+  if (manualLoading) return;
+  if (reset) manualPage = 1;
+  const qs = buildManualQuery();
+  qs.set('page', String(manualPage));
+  qs.set('page_size', String(MANUAL_PAGE_SIZE));
+  manualLoading = true;
+  const moreBtn = $('#loadMoreBtn');
+  if (reset) {
+    renderSkeletons($('#manualList'));
+    pagerResetUI();
+  } else {
+    moreBtn.disabled = true;
+    moreBtn.classList.add('is-loading');
+  }
   try {
     const data = await api(`/api/invoices?${qs}`);
     manualLoaded = true;
-    $('#manualList').innerHTML = data.items.length
-      ? data.items.map((it, idx) => cardHtml(it, { delayIdx: idx })).join('')
-      + (data.has_more ? `<p class="empty">一共有 ${data.total} 条呢，先给你看前 ${data.items.length} 条，缩小范围找找吧</p>` : '')
-      : '<p class="empty">咦，一张符合条件的票据都没有呢</p>';
-    $$('#manualList [data-claim]').forEach((b) =>
-      b.addEventListener('click', () => openClaimModal([Number(b.dataset.claim)]))
-    );
+    manualHasMore = data.has_more;
+    manualTotal = data.total;
+    const html = data.items.map((it, idx) => cardHtml(it, { delayIdx: idx })).join('');
+    if (reset) {
+      $('#manualList').innerHTML = data.items.length
+        ? html
+        : '<p class="empty">咦，一张符合条件的票据都没有呢</p>';
+      manualShown = data.items.length;
+    } else {
+      $('#manualList').insertAdjacentHTML('beforeend', html);
+      manualShown += data.items.length;
+    }
+    updateManualPager();
   } catch (err) {
     toast(err.message, 'err');
+    if (reset) {
+      $('#manualList').innerHTML = '';
+      manualTotal = 0;
+      updateManualPager();
+    }
+  } finally {
+    manualLoading = false;
+    moreBtn.disabled = false;
+    moreBtn.classList.remove('is-loading');
   }
+}
+
+function pagerResetUI() {
+  $('#manualPager').hidden = true;
+  $('#manualCount').textContent = '';
 }
 
 /* ---------- 领取弹窗 ---------- */
@@ -654,8 +722,12 @@ function closeClaimModal() {
 }
 
 function refreshCurrentPanel() {
-  if (!$('#panelRecommend').hidden && lastRecommend) runRecommend();
-  else loadManual();
+  if (!$('#panelRecommend').hidden) {
+    // 推荐页：仅在已有匹配条件时重跑，避免无意义请求
+    if (lastRecommend) runRecommend();
+  } else if (manualLoaded) {
+    loadManual(true);
+  }
   loadStats();
 }
 
@@ -768,7 +840,33 @@ document.addEventListener('keydown', (e) => {
   closeMsMenus();
 });
 
-$('#queryBtn').addEventListener('click', loadManual);
+$('#queryBtn').addEventListener('click', () => loadManual(true));
+
+// 列表内「寄到我邮箱」按钮：事件委托一次绑定，分页追加的卡片无需重复挂监听
+$('#manualList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-claim]');
+  if (btn) openClaimModal([Number(btn.dataset.claim)]);
+});
+
+// 分页：再翻一页（追加渲染）
+$('#loadMoreBtn').addEventListener('click', () => {
+  if (manualLoading || !manualHasMore) return;
+  manualPage += 1;
+  loadManual(false);
+});
+
+// 卡片 / 列表视图切换，偏好持久化
+$('#viewCardBtn').addEventListener('click', () => {
+  viewMode = 'card';
+  localStorage.setItem('vpViewMode', viewMode);
+  applyViewMode();
+});
+$('#viewListBtn').addEventListener('click', () => {
+  viewMode = 'list';
+  localStorage.setItem('vpViewMode', viewMode);
+  applyViewMode();
+});
+applyViewMode();
 // 筛选输入框内按回车直接查询
 ['filterMin', 'filterMax', 'filterMonth'].forEach((id) => {
   $('#' + id).addEventListener('keydown', (e) => {
