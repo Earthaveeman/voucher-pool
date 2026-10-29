@@ -2,7 +2,7 @@
   "name": "voucher-pool",
   "version": "1.0.0",
   "description": "票据分享池：票据共享流转小工具（分享上传 / 智能推荐 / 邮件投递领取）",
-  "private": true,
+  "license": "MIT",
   "engines": { "node": ">=22.13.0" },
   "main": "server.js",
   "scripts": {
